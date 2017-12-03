@@ -8,19 +8,17 @@ import os
 class DBFindTest(unittest.TestCase):
 
     def setUp(self):
-        # self.db_connection = DBConnection()
-        pass
+        self.db_connection = DBConnection()
 
     def tearDown(self):
-        # self.db_connection.close()
-        pass
+        self.db_connection.close()
 
-    # def test_find_document(self):
-    #     result = self.db_connection.find_document(collection=DB.MP_COLLECTION,
-    #                                          filter={"twitter_handle": "@theresa_may"},
-    #                                          projection={"name": 1, "_id": 0})
-    #
-    #     self.assertEqual(result[0]["name"], "Theresa May")
+    def test_find_document(self):
+        result = self.db_connection.find_document(collection=DB.MP_COLLECTION,
+                                             filter={"twitter_handle": "@theresa_may"},
+                                             projection={"name": 1, "_id": 0})
+
+        self.assertEqual(result[0]["name"], "Theresa May")
 
     def test_validate_twitter(self):
         twitter_api = Twitter(os.getenv(CREDS.TWITTER_KEY),
