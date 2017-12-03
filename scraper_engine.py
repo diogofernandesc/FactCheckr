@@ -10,7 +10,7 @@ class Scraper(object):
         else:
             raise requests.ConnectionError("Couldn't connect to that URL.")
 
-    def scrape_page(self):
+    def scrape_page(self, specific_mp=None):
         mp_list = []  # A list of MP objects which will be returned and passed to database possible insert
         soup = BeautifulSoup(self.page, 'html.parser')
         for entry in soup.findAll("tr"):
@@ -40,20 +40,4 @@ class Scraper(object):
 
         return mp_list
 
-
-class MP(object):
-    def __init__(self, name, party, constituency, twitter_username):
-        self.name = name
-        self.party = party
-        self.constituency = constituency
-        self.twitter_username = twitter_username
-
-    def format_to_insert(self):
-        dict_result = {
-            'name': self.name,
-            'party': self.party,
-            'constituency': self.constituency,
-            'twitter_username': self.twitter_username
-        }
-        return dict_result
 
