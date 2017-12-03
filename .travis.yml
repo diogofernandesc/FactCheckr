@@ -4,7 +4,7 @@ python:
 # command to install dependencies
 install:
   - pip install -r requirements.txt
-script: db_engine_tests.py
+script: python db_engine_tests.py
 branches:
   only:
   - master
