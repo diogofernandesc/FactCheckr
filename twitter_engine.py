@@ -1,8 +1,11 @@
 import twitter
+from db_engine import DBConnection
+from cons import DB
 
 
 class Twitter(object):
-    def __init__(self, consumer_key, consumer_secret, access_token_key, access_token_secret):
+    def __init__(self, consumer_key, consumer_secret, access_token_key, access_token_secret, db_connection):
+        self.db_connection = db_connection
         self.consumer_key = consumer_key
         self.consumer_secret = consumer_secret
         self.access_token_key = access_token_key
@@ -16,10 +19,51 @@ class Twitter(object):
 
     def get_timeline(self, user):
         tweets = self.api.GetUserTimeline(screen_name=user,
-                                            count=200,
-                                            exclude_replies=True,
-                                            include_rts=False)
+                                          count=200,
+                                          exclude_replies=False,
+                                          include_rts=False)
         print tweets[0]
+
+    def get_user_data(self, user_id):
+        try:
+            data = self.api.GetUser(user_id=user_id)
+            print data
+        except:
+            print "Twitter ID not found: %s" % user_id
+            return {}  #Twitter handle doesn't exist
+
+        if data.status: # This MP has tweeted
+
+            user_dict = {
+                'description': data.description,
+                'followers_count': data.followers_count,
+                'tweet_count': data.statuses_count,
+                'newest_id': data.status.id,
+            }
+
+            self.db_connection.update_mp(data.id, user_dict)
+
+        else:
+            print "MP: %s - has not tweeted" % user_id
+
+    def new_mp(self, twitter_handle):
+        try:
+            data = self.api.GetUser(screen_name=twitter_handle)
+        except:
+            print "Twitter handle not found: %s" % twitter_handle
+            return {}
+
+        user_dict = {
+            'description': data.description,
+            'followers_count': data.followers_count,
+            'tweet_count': data.statuses_count,
+            'newest_id': data.status.id,
+            '_id': data.id,
+            'twitter_handle': "@%s" % data.screen_name
+        }
+        self.db_connection.create_mp(user_dict)
+
+
 
 
 def get_twitter_credentials():
@@ -29,6 +73,7 @@ def get_twitter_credentials():
                 twitter_credentials = line.split("-->")[1].split(",")
                 return twitter_credentials
 
+
 tc = get_twitter_credentials()
-twitter_api = Twitter(tc[0], tc[1], tc[2], tc[3])
-twitter_api.get_timeline("theresa_may")
+db_connection = DBConnection()
+twitter_api = Twitter(tc[0], tc[1], tc[2], tc[3], db_connection=db_connection)
