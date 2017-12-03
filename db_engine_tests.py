@@ -14,10 +14,9 @@ class DBFindTest(unittest.TestCase):
         db_connection = DBConnection()
         result = db_connection.find_document(collection=DB.MP_COLLECTION,
                                              filter={"twitter_handle": "@theresa_may"},
-                                             projection={"name": 1, "_id": 0})[0]
+                                             projection={"name": 1, "_id": 0})
 
-        db_connection.close()
-        self.assertEqual(result["name"], "Theresa May")
+        self.assertEqual(result[0]["name"], "Theresa May")
 
     def test_validate_twitter(self):
         db_connection = DBConnection()

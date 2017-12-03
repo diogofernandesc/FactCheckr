@@ -6,7 +6,6 @@ import os
 
 class DBConnection(object):
     def __init__(self, deploy=False):
-        # print os.environ
         self.client = MongoClient(os.environ.get("MONGO_URI"))
         self.scraper = Scraper("http://www.mpsontwitter.co.uk/list")
         self.db = self.client.ip_db
@@ -58,7 +57,6 @@ class DBConnection(object):
 
     def close(self):
         self.client.close()
-
 
 
 
