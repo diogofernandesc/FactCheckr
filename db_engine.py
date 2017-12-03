@@ -6,7 +6,6 @@ import os
 
 class DBConnection(object):
     def __init__(self):
-        # print "mongoURI: %s" % os.getenv("MONGO_URI")
         self.client = MongoClient("mongodb://%s:%s@%s/%s?ssl=true&replicaSet=%s&authSource=admin" % (
                                     os.getenv("MONGO_USER"),
                                     os.getenv("MONGO_PASS"),
@@ -14,16 +13,20 @@ class DBConnection(object):
                                     os.getenv("DB_NAME"),
                                     os.getenv("REPLICA_SET"))
                                   )
-
-
-        self.scraper = Scraper("http://www.mpsontwitter.co.uk/list")
+        # self.scraper = Scraper("http://www.mpsontwitter.co.uk/list")
         self.db = self.client.ip_db
         self.bulkWrite = []
 
-    def insert_mps(self):
-        mp_list = self.scraper.scrape_page()
-        mp_data = self.db.mp_data
-        result = mp_data.insert_many(mp_list)
+    def insert_tweets(self, tweet_list):
+        self.db[DB.TWEET_COLLECTION].insert_many(tweet_list)
+
+    def insert_tweet(self, tweet):
+        self.db[DB.TWEET_COLLECTION].insert_one(tweet)
+
+    # def insert_mps(self):
+        # mp_list = self.scraper.scrape_page()
+        # mp_data = self.db.mp_data
+        # result = mp_data.insert_many(mp_list)
 
     def start_bulk_write(self):
         self.bulkWrite = []
@@ -45,7 +48,7 @@ class DBConnection(object):
         mp_data = self.db.mp_data
         result = mp_data.insert_one(data)
 
-    def update_mp(self,user_id, update):
+    def update_mp(self, user_id, update):
         '''
         Updates fields for a given MP
         :param user_id: twitter id of the MP
@@ -56,13 +59,6 @@ class DBConnection(object):
         mp_data = self.db.mp_data
         result = mp_data.update_one(filter={"_id": user_id}, update={"$set": update}, upsert=True)
         # self.bulkWrite.append(result)
-
-    # def get_db_credentials(self):
-    #     with open("creds.txt", "r") as creds:
-    #         for line in creds:
-    #             if line.startswith("!db"):
-    #                 creds = line.split("-->")[1]
-    #                 return creds
 
     def close(self):
         self.client.close()
