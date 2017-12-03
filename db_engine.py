@@ -6,8 +6,16 @@ import os
 
 class DBConnection(object):
     def __init__(self):
-        print "mongoURI: %s" % os.getenv("MONGO_URI")
-        self.client = MongoClient("mongodb://%s" % os.getenv("MONGO_URI"))
+        # print "mongoURI: %s" % os.getenv("MONGO_URI")
+        self.client = MongoClient("mongodb://%s:%s@%s/%s?ssl=true&replicaSet=%s&authSource=admin" % (
+                                    os.getenv("MONGO_USER"),
+                                    os.getenv("MONGO_PASS"),
+                                    os.getenv("CLUSTERS"),
+                                    os.getenv("DB_NAME"),
+                                    os.getenv("REPLICA_SET"))
+                                  )
+
+
         self.scraper = Scraper("http://www.mpsontwitter.co.uk/list")
         self.db = self.client.ip_db
         self.bulkWrite = []
