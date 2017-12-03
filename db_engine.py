@@ -6,10 +6,10 @@ import os
 
 class DBConnection(object):
     def __init__(self, deploy=False):
-        self.mongo_uri = self.get_db_credentials()
         if deploy:
             self.client = MongoClient(os.environ.get("MONGO_URI"))
         else:
+            self.mongo_uri = self.get_db_credentials()
             self.client = MongoClient(self.mongo_uri.strip())
         self.scraper = Scraper("http://www.mpsontwitter.co.uk/list")
         self.db = self.client.ip_db
