@@ -1,6 +1,7 @@
 import twitter
 from db_engine import DBConnection
-from cons import DB
+from cons import DB, CREDS
+import os
 
 
 class Twitter(object):
@@ -16,6 +17,9 @@ class Twitter(object):
             access_token_key=self.access_token_key,
             access_token_secret=self.access_token_secret
         )
+
+    def verify_credentials(self):
+        return self.api.VerifyCredentials()
 
     def get_timeline(self, user):
         tweets = self.api.GetUserTimeline(screen_name=user,
@@ -74,6 +78,12 @@ def get_twitter_credentials():
                 return twitter_credentials
 
 
-tc = get_twitter_credentials()
-db_connection = DBConnection()
-twitter_api = Twitter(tc[0], tc[1], tc[2], tc[3], db_connection=db_connection)
+# tc = get_twitter_credentials()
+# db_connection = DBConnection()
+# twitter_api = Twitter(os.environ.get(CREDS.TWITTER_KEY),
+#                       os.environ.get(CREDS.TWITTER_SECRET),
+#                       os.environ.get(CREDS.TWITTER_TOKEN),
+#                       os.environ.get(CREDS.TWITTER_TOKEN_SECRET),
+#                       db_connection)
+
+
