@@ -9,7 +9,7 @@ class DBConnection(object):
         if deploy:
             self.client = MongoClient(os.environ.get("MONGO_URI"))
         else:
-            self.mongo_uri = self.get_db_credentials()
+            # self.mongo_uri = self.get_db_credentials()
             self.client = MongoClient(self.mongo_uri.strip())
         self.scraper = Scraper("http://www.mpsontwitter.co.uk/list")
         self.db = self.client.ip_db
@@ -52,12 +52,12 @@ class DBConnection(object):
         result = mp_data.update_one(filter={"_id": user_id}, update={"$set": update}, upsert=True)
         # self.bulkWrite.append(result)
 
-    def get_db_credentials(self):
-        with open("creds.txt", "r") as creds:
-            for line in creds:
-                if line.startswith("!db"):
-                    creds = line.split("-->")[1]
-                    return creds
+    # def get_db_credentials(self):
+    #     with open("creds.txt", "r") as creds:
+    #         for line in creds:
+    #             if line.startswith("!db"):
+    #                 creds = line.split("-->")[1]
+    #                 return creds
 
     def close(self):
         self.client.close()
