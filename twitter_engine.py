@@ -5,8 +5,8 @@ import os
 
 
 class Twitter(object):
-    def __init__(self, consumer_key, consumer_secret, access_token_key, access_token_secret, db_connection):
-        self.db_connection = db_connection
+    def __init__(self, consumer_key, consumer_secret, access_token_key, access_token_secret):
+        # self.db_connection = db_connection
         self.consumer_key = consumer_key
         self.consumer_secret = consumer_secret
         self.access_token_key = access_token_key
@@ -45,7 +45,7 @@ class Twitter(object):
                 'newest_id': data.status.id,
             }
 
-            self.db_connection.update_mp(data.id, user_dict)
+            # self.db_connection.update_mp(data.id, user_dict)
 
         else:
             print "MP: %s - has not tweeted" % user_id
@@ -65,17 +65,17 @@ class Twitter(object):
             '_id': data.id,
             'twitter_handle': "@%s" % data.screen_name
         }
-        self.db_connection.create_mp(user_dict)
+        # self.db_connection.create_mp(user_dict)
 
 
-
-
-def get_twitter_credentials():
-    with open("creds.txt", "r") as creds:
-        for line in creds:
-            if line.startswith("!twitter"):
-                twitter_credentials = line.split("-->")[1].split(",")
-                return twitter_credentials
+#
+#
+# def get_twitter_credentials():
+#     with open("creds.txt", "r") as creds:
+#         for line in creds:
+#             if line.startswith("!twitter"):
+#                 twitter_credentials = line.split("-->")[1].split(",")
+#                 return twitter_credentials
 
 
 # tc = get_twitter_credentials()
