@@ -6,7 +6,7 @@ import os
 
 class DBConnection(object):
     def __init__(self):
-        print "mongoURI: %s" % os.environ.get("MONGO_URI")
+        print "mongoURI: %s" % os.getenv("MONGO_URI")
         self.client = MongoClient(os.environ.get("MONGO_URI"))
         self.scraper = Scraper("http://www.mpsontwitter.co.uk/list")
         self.db = self.client.ip_db
