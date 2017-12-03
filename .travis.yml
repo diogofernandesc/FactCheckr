@@ -1,0 +1,12 @@
+language: python
+python:
+- '2.7'
+# command to install dependencies
+install:
+  - pip install -r requirements.txt
+script: python tests/db_engine_tests.py
+branches:
+  only:
+  - master
+dd:
+  secure: L1GWkIdW7u9H0QqaJJnPN6tfvrZxkKe1IkSucHdKYOeTDY5lQBjMWP7hhzfJuCl6JBM177HIxGxQJA7lTptUhOS9MUoYl2SIJapu/d19OtLBD3LaQj/WZBPWcw9OkPEG1yzAnPWEelnFbUye7e61n/PfiNB3cOfw2+P9Jj7F2O7e6+nN+kTXKVlU97SzRBGbztRcD6iIcqTEK8RWcS0RQ3GUX79aDLuJTzkex/IEqil4q/PxGu6C+zHHyGRfVFOetecqhhZVG4sLNnri4NHKIVxrPIjNEhdk1lZPK2w6eJawj02AAcOiePlOtA0QVvxE0QU8vj/IynxnkwB2brN4SaHGTqiXIBx7i1M47EByw3JSDwG/paMmT+nLUeUU1LR79ncTGkOV5wqlDDJ8WvBj3iKTphav2xJuAeuGJHg8N/M+OvqxQ+QN3J2xGEnuI/1k73WiMcAKVphasD8bj9yNNjg7Km0LrKppsrj4VudygMO32r3tkkXKRb0V2WzYxCpO6Gus/dKYHGrK+xbTeUDRNsYdCGeIoBXcRsSUckCOYHAGDrt20Ew4YpmfefkbrCjo3sm8ePy2wxLSExDlwpbbN4/y/k2M8gR7FKvnleH9KO5wyPGScds5/MZtEjRiwchYNCAq01MtpVD1+5WdFGasJkSWWZhZzfZ/gNAlxBfmqP4=
