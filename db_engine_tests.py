@@ -20,14 +20,14 @@ class DBFindTest(unittest.TestCase):
 
         self.assertEqual(result[0]["name"], "Theresa May")
 
-    def test_validate_twitter(self):
-        twitter_api = Twitter(os.getenv(CREDS.TWITTER_KEY),
-                              os.getenv(CREDS.TWITTER_SECRET),
-                              os.getenv(CREDS.TWITTER_TOKEN),
-                              os.getenv(CREDS.TWITTER_TOKEN_SECRET),
-                              self.db_connection)
-
-        self.assertTrue(expr=twitter_api.verify_credentials(), msg="Could not validate Twitter credentials.")
+    # def test_validate_twitter(self):
+    #     twitter_api = Twitter(os.getenv(CREDS.TWITTER_KEY),
+    #                           os.getenv(CREDS.TWITTER_SECRET),
+    #                           os.getenv(CREDS.TWITTER_TOKEN),
+    #                           os.getenv(CREDS.TWITTER_TOKEN_SECRET),
+    #                           self.db_connection)
+    #
+    #     self.assertTrue(expr=twitter_api.verify_credentials(), msg="Could not validate Twitter credentials.")
 
 
 if __name__ == '__main__':
