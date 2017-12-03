@@ -3,7 +3,7 @@ from db_engine import DBConnection
 from cons import DB
 
 
-class DBFindTest(unittest.testCase):
+class DBFindTest(unittest.TestCase):
 
     def find_document(self):
         db_connection = DBConnection(deploy=True)
