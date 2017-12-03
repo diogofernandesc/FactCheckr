@@ -13,3 +13,7 @@ class DBFindTest(unittest.testCase):
 
         self.assertEqual(result["name"], "Theresa May")
         db_connection.close()
+
+
+if __name__ == '__main__':
+    unittest.main()
