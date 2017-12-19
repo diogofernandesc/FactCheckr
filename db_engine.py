@@ -47,7 +47,7 @@ class DBConnection(object):
             print(bwe.details)
 
     def find_document(self, collection, filter=None, projection=None):
-        return self.db[collection].find(filter=filter, projection=projection)
+        return self.db[collection].find(filter=filter, projection=projection, no_cursor_timeout=False)
 
     def find_and_update(self, collection, filter=None, update=None):
         self.db[collection].find_one_and_update(filter=filter, update=update)

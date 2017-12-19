@@ -219,6 +219,8 @@ class Twitter(object):
                 self.logger.info("Sleeping to control Twitter rate limit")
                 time.sleep(60 * 16)
 
+        mp_list.close()
+
 
 db_connection = DBConnection()
 twitter_api = Twitter(os.environ.get(CREDS.TWITTER_KEY),
