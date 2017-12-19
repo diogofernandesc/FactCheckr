@@ -1,4 +1,4 @@
-from pymongo import MongoClient
+from pymongo import MongoClient, bulk
 from scraper_engine import Scraper
 from cons import DB
 import os
@@ -6,19 +6,27 @@ import os
 
 class DBConnection(object):
     def __init__(self):
-        self.client = MongoClient("mongodb://%s:%s@%s/%s?ssl=true&replicaSet=%s&authSource=admin" % (
-                                    os.getenv("MONGO_USER"),
-                                    os.getenv("MONGO_PASS"),
-                                    os.getenv("CLUSTERS"),
-                                    os.getenv("DB_NAME"),
-                                    os.getenv("REPLICA_SET"))
-                                  )
+        self.client = MongoClient("mongodb://%s:%s@%s:27017" % (
+            os.getenv("USER_MONGO"),
+            os.getenv("PASS_MONGO"),
+            os.getenv("ADDRESS_MONGO")
+            ))
         # self.scraper = Scraper("http://www.mpsontwitter.co.uk/list")
         self.db = self.client.ip_db
         self.bulkWrite = []
 
     def insert_tweets(self, tweet_list):
-        self.db[DB.TWEET_COLLECTION].insert_many(tweet_list)
+        try:
+            bulk_insert = bulk.BulkOperationBuilder(collection=self.db[DB.TWEET_COLLECTION], ordered=False)
+            for tweet in tweet_list:
+                bulk_insert.insert(tweet)
+
+            response = bulk_insert.execute()
+
+        except:
+            print "Duplicate insertion ignored"
+
+        # self.db[DB.TWEET_COLLECTION].insert_many(tweet_list, ordered=False)
 
     def insert_tweet(self, tweet):
         self.db[DB.TWEET_COLLECTION].insert_one(tweet)
