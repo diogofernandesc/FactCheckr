@@ -1,5 +1,5 @@
-import twitter
-from twitter import TwitterError
+from python_twitter_fork import twitter
+from python_twitter_fork.twitter import TwitterError
 from db_engine import DBConnection
 from cons import DB, CREDS
 import os
@@ -105,6 +105,7 @@ class Twitter(object):
                                                           max_id=oldest_id,
                                                           trim_user=True
                                                           )
+                        print tweets
                     else:
                         tweets = self.api.GetUserTimeline(user_id=user_id,
                                                           count=200,
@@ -115,8 +116,8 @@ class Twitter(object):
                                                           )
                 else:
                     break
-            except TwitterError:
-                self.logger.debug("Rate limit for twitter reached.. now sleeping")
+            except TwitterError as e:
+                self.logger.log("Rate limit for twitter reached.. now sleeping")
                 time.sleep(60 * 16)
                 self.get_update_tweets(mp_doc=mp_doc, historic=historic)
                 break
@@ -220,7 +221,6 @@ class Twitter(object):
                 time.sleep(60 * 16)
 
         mp_list.close()
-
 
 db_connection = DBConnection()
 twitter_api = Twitter(os.environ.get(CREDS.TWITTER_KEY),
