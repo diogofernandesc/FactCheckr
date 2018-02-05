@@ -9,14 +9,15 @@ logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 
 class DBConnection(object):
     def __init__(self):
-        # self.client = MongoClient("mongodb://%s:%s@%s:27017" % (
-        #     os.getenv("USER_MONGO"),
-        #     os.getenv("PASS_MONGO"),
-        #     os.getenv("ADDRESS_MONGO")
-        #     ))
+        # value = os.getenv("USER_MONGO")
+        self.client = MongoClient("mongodb://%s:%s@%s:27017" % (
+            os.getenv("USER_MONGO"),
+            os.getenv("PASS_MONGO"),
+            os.getenv("ADDRESS_MONGO")
+            ))
 
         # Testing:
-        self.client = MongoClient("mongodb://localhost:27017")
+        # self.client = MongoClient("mongodb://localhost:27017")
         # self.scraper = Scraper("http://www.mpsontwitter.co.uk/list")
         self.db = self.client.ip_db
         self.bulkWrite = []

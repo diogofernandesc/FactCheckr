@@ -6,6 +6,7 @@ import os
 import time
 from datetime import datetime
 import logging
+from requests import ConnectionError
 
 
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
@@ -116,7 +117,7 @@ class Twitter(object):
                                                       )
                 # else:
                 #     break
-            except TwitterError as e:
+            except (TwitterError, ConnectionError):
                 self.logger.info("Rate limit for twitter reached.. now sleeping")
                 time.sleep(60 * 16)
                 self.get_update_tweets(mp_doc=mp_doc, historic=historic)
