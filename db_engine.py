@@ -2,6 +2,9 @@ from pymongo import MongoClient, bulk
 from scraper_engine import Scraper
 from cons import DB
 import os
+import logging
+
+logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 
 
 class DBConnection(object):
@@ -17,19 +20,28 @@ class DBConnection(object):
         # self.scraper = Scraper("http://www.mpsontwitter.co.uk/list")
         self.db = self.client.ip_db
         self.bulkWrite = []
+        self.logger = logging.getLogger(__name__)
 
-    def insert_tweets(self, tweet_list):
+    def insert_tweets(self, tweet_list, retweets=False):
         try:
-            bulk_insert = bulk.BulkOperationBuilder(collection=self.db[DB.TWEET_COLLECTION], ordered=False)
+            collection = DB.TWEET_COLLECTION
+            if retweets:
+                collection = DB.RETWEET_COLLECTION
+
+            bulk_insert = bulk.BulkOperationBuilder(collection=self.db[collection], ordered=False)
             for tweet in tweet_list:
                 bulk_insert.insert(tweet)
 
             response = bulk_insert.execute()
 
         except:
-            print "Duplicate insertion ignored"
+            self.logger.info("Duplicate insertion ignored")
 
         # self.db[DB.TWEET_COLLECTION].insert_many(tweet_list, ordered=False)
+
+    def apply_field_to_all(self, field, value, collection):
+        result = self.db[collection].update_many({}, {'$set': {field: value}})
+        print result.matched_count
 
     def insert_tweet(self, tweet):
         self.db[DB.TWEET_COLLECTION].insert_one(tweet)

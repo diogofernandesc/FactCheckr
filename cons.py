@@ -1,7 +1,9 @@
 class DB(object):
     NAME = "ip_db"
     TWEET_COLLECTION = "mp_tweets"
+    RETWEET_COLLECTION = "mp_retweets"
     MP_COLLECTION = "mp_data"
+
 
 class CREDS(object):
     TWITTER_KEY = "TWITTER_KEY"

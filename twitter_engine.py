@@ -39,10 +39,10 @@ class Twitter(object):
         try:
             data = self.api.GetUser(user_id=user_id)
         except:
-            print "Twitter ID not found: %s" % user_id
+            self.logger.warning("Twitter ID not found: %s" % user_id)
             return {}  #Twitter handle doesn't exist
 
-        if data.status: # This MP has tweeted
+        if data.status:  # This MP has tweeted
             user_dict = {
                 'description': data.description,
                 'followers_count': data.followers_count,
@@ -60,7 +60,7 @@ class Twitter(object):
         try:
             data = self.api.GetUser(screen_name=twitter_handle)
         except:
-            print "Twitter handle not found: %s" % twitter_handle
+            self.logger.warning("Twitter handle not found: %s" % twitter_handle)
             return {}
 
         user_dict = {
@@ -96,40 +96,47 @@ class Twitter(object):
 
         while tweets_available:
             try:
-                if oldest_id or newest_id:
-                    if historic:
-                        tweets = self.api.GetUserTimeline(user_id=user_id,
-                                                          count=200,
-                                                          exclude_replies=False,
-                                                          include_rts=False,
-                                                          max_id=oldest_id,
-                                                          trim_user=True
-                                                          )
-                        print tweets
-                    else:
-                        tweets = self.api.GetUserTimeline(user_id=user_id,
-                                                          count=200,
-                                                          exclude_replies=False,
-                                                          include_rts=False,
-                                                          since_id=newest_id,
-                                                          trim_user=True
-                                                          )
+                # if oldest_id or newest_id:
+                if historic:
+                    tweets = self.api.GetUserTimeline(user_id=user_id,
+                                                      count=200,
+                                                      exclude_replies=False,
+                                                      include_rts=True,
+                                                      max_id=oldest_id,
+                                                      trim_user=True,
+                                                      )
+                    print tweets
                 else:
-                    break
+                    tweets = self.api.GetUserTimeline(user_id=user_id,
+                                                      count=200,
+                                                      exclude_replies=False,
+                                                      include_rts=True,
+                                                      since_id=newest_id,
+                                                      trim_user=True
+                                                      )
+                # else:
+                #     break
             except TwitterError as e:
-                self.logger.log("Rate limit for twitter reached.. now sleeping")
+                self.logger.info("Rate limit for twitter reached.. now sleeping")
                 time.sleep(60 * 16)
                 self.get_update_tweets(mp_doc=mp_doc, historic=historic)
                 break
 
             if tweets:
                 calls_to_api += 1
-                if not old_tweets == tweets:
+                if old_tweets != tweets:
                     tweet_list = []
+                    retweet_list = []
                     similar_count = 0  # Track how many of the same tweets have appeared
                     for tweet in tweets:
+                        retweet = False
                         if historic:
-                            if tweet.id < oldest_id:
+                            if tweet.retweeted_status:
+                                retweet_user = tweet.full_text.split(" ")[1].split(":")[0]
+                                retweet = True
+                                tweet = tweet.retweeted_status
+
+                            if tweet.id < oldest_id or not oldest_id:
                                 oldest_id = tweet.id
 
                             elif tweet.id == oldest_id:
@@ -142,7 +149,7 @@ class Twitter(object):
                                 break
 
                         else:
-                            if tweet.id > newest_id:
+                            if tweet.id > newest_id or not newest_id:
                                 newest_id = tweet.id
 
                             elif tweet.id == newest_id:
@@ -154,8 +161,6 @@ class Twitter(object):
                             else:
                                 tweets_available = False
                                 break
-
-
 
                         formatted_tweet = {
                             "_id": tweet.id,
@@ -182,11 +187,19 @@ class Twitter(object):
                             url = tweet.urls[0].url
                             formatted_tweet["url"] = url
 
+                        if retweet:
+                            formatted_tweet["author_handle"] = retweet_user
+                            formatted_tweet["retweeter_handle"] = twitter_handle
+                            retweet_list.append(formatted_tweet)
+
+                        else:
                         # self.db_connection.insert_tweet(formatted_tweet)
-                        tweet_list.append(formatted_tweet)
+                            tweet_list.append(formatted_tweet)
 
                     old_tweets = tweets
-                    self.db_connection.insert_tweets(tweet_list)  # Insert in batches of 200 (if there are 200 new tweets)
+                    self.db_connection.insert_tweets(tweet_list)  # Insert in batches of 200
+                    if retweet_list:
+                        self.db_connection.insert_tweets(tweet_list=retweet_list, retweets=True)
                 else:
                     tweets_available = False
 
@@ -209,7 +222,7 @@ class Twitter(object):
             self.get_user_data(mp["_id"])
 
     def update_all_tweets(self, historic=False):
-        total_calls_to_api = 0
+        total_calls_to_api = 1
         mp_list = db_connection.find_document(collection=DB.MP_COLLECTION,
                                               filter={},
                                               projection={"twitter_handle": 1, "oldest_id": 1, "newest_id": 1})
@@ -223,6 +236,7 @@ class Twitter(object):
         mp_list.close()
 
 db_connection = DBConnection()
+# db_connection.apply_field_to_all(field="oldest_id", value=None, collection=DB.MP_COLLECTION)
 twitter_api = Twitter(os.environ.get(CREDS.TWITTER_KEY),
                       os.environ.get(CREDS.TWITTER_SECRET),
                       os.environ.get(CREDS.TWITTER_TOKEN),
