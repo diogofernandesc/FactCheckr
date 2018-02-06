@@ -38,6 +38,19 @@ class DBConnection(object):
         except:
             self.logger.info("Duplicate insertion ignored")
 
+    def insert_news_headlines(self, headline_list):
+        try:
+            collection = DB.NEWS_COLLECTION
+            bulk_insert = bulk.BulkOperationBuilder(collection=self.db[collection], ordered=False)
+            for headline in headline_list:
+                bulk_insert.insert(headline)
+
+            response = bulk_insert.execute()
+
+        except Exception as e:
+            raise(e)
+            self.logger.info("Issue inserting news headline")
+
         # self.db[DB.TWEET_COLLECTION].insert_many(tweet_list, ordered=False)
 
     def apply_field_to_all(self, field, value, collection):
@@ -65,8 +78,9 @@ class DBConnection(object):
     def find_document(self, collection, filter=None, projection=None):
         return self.db[collection].find(filter=filter, projection=projection, no_cursor_timeout=False)
 
-    def find_and_update(self, collection, filter=None, update=None):
-        self.db[collection].find_one_and_update(filter=filter, update=update)
+    def find_and_update(self, collection, query=None, update=None):
+        result = self.db[collection].update_one(query, update)
+        return result
 
     def create_mp(self, data):
         mp_data = self.db.mp_data
