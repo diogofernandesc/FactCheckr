@@ -48,13 +48,12 @@ class DBConnection(object):
             response = bulk_insert.execute()
 
         except Exception as e:
-            raise(e)
-            self.logger.info("Issue inserting news headline")
+            self.logger.info("Avoided inserting duplicate news headline")
 
         # self.db[DB.TWEET_COLLECTION].insert_many(tweet_list, ordered=False)
 
     def apply_field_to_all(self, field, value, collection):
-        result = self.db[collection].update_many({}, {'$set': {field: value}})
+        result = self.db[collection].update_many({"author_handle": "@AdamAfriyie"}, {'$set': {field: value}})
         print result.matched_count
 
     def insert_tweet(self, tweet):
