@@ -35,7 +35,7 @@ class DBConnection(object):
 
             response = bulk_insert.execute()
 
-        except:
+        except Exception as e:
             self.logger.info("Duplicate insertion ignored")
 
     def insert_news_headlines(self, headline_list):
@@ -53,7 +53,7 @@ class DBConnection(object):
         # self.db[DB.TWEET_COLLECTION].insert_many(tweet_list, ordered=False)
 
     def apply_field_to_all(self, field, value, collection):
-        result = self.db[collection].update_many({"author_handle": "@AdamAfriyie"}, {'$set': {field: value}})
+        result = self.db[collection].update_many({}, {'$set': {field: value}}, upsert=True)
         print result.matched_count
 
     def insert_tweet(self, tweet):
@@ -75,7 +75,7 @@ class DBConnection(object):
             print(bwe.details)
 
     def find_document(self, collection, filter=None, projection=None):
-        return self.db[collection].find(filter=filter, projection=projection, no_cursor_timeout=False)
+        return self.db[collection].find(filter=filter, projection=projection, no_cursor_timeout=True)
 
     def find_and_update(self, collection, query=None, update=None):
         result = self.db[collection].update_one(query, update)

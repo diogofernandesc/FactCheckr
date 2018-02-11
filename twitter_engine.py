@@ -1,7 +1,9 @@
+import calendar
+
 from python_twitter_fork import twitter
 from python_twitter_fork.twitter import TwitterError
 from db_engine import DBConnection
-from cons import DB, CREDS
+from cons import DB, CREDS, MP, TWEET
 import os
 import time
 from datetime import datetime
@@ -24,8 +26,117 @@ class Twitter(object):
             consumer_key=self.consumer_key,
             consumer_secret=self.consumer_secret,
             access_token_key=self.access_token_key,
-            access_token_secret=self.access_token_secret
+            access_token_secret=self.access_token_secret,
+            sleep_on_rate_limit=True
         )
+
+    def get_tweets(self, mp_doc, historic=False):
+        '''
+        Collect tweets for a given MP, updates number of tweets collected for an MP
+        If number of collected tweets is less than the amount of tweets this MP has it'll carry on
+        :param mp_doc: mongo document for mp we are collecting tweets for, projection is applied
+        :param historic: Old tweets being fetched or not
+        :return:
+        '''
+
+        tweet_list = []
+        retweet_list = []
+        user_id = mp_doc[MP.ID]
+        twitter_handle = mp_doc[MP.TWITTER_HANDLE]
+        tweet_count = mp_doc[MP.TWEET_COUNT]
+        tweets_collected = mp_doc[MP.TWEETS_COLLECTED]
+        if MP.OLDEST_ID in mp_doc:
+            oldest_id = mp_doc[MP.OLDEST_ID]
+
+        if MP.NEWEST_ID in mp_doc:
+            newest_id = mp_doc[MP.NEWEST_ID]
+
+        # Only collect tweets while the amount collected is less than the available for that MP
+        while tweets_collected < tweet_count:
+            raw_tweets = self.api.GetUserTimeline(user_id=user_id,
+                                                  count=200,
+                                                  exclude_replies=False,
+                                                  include_rts=True,
+                                                  since_id=newest_id,
+                                                  max_id=oldest_id,
+                                                  )
+
+            if not raw_tweets:  # Break if API limit reached
+                break
+
+            tweets_collected += len(raw_tweets)
+            for raw_tweet in raw_tweets:
+                retweet = False
+
+                # Tweet count
+                tweet_count = raw_tweet.user.statuses_count
+
+                if raw_tweet.retweeted_status:
+                    retweet_user = raw_tweet.full_text.split(" ")[1].split(":")[0]
+                    retweet = True
+                    raw_tweet = raw_tweet.retweeted_status
+
+                if historic:
+                    if raw_tweet.id < oldest_id or not oldest_id:
+                        oldest_id = raw_tweet.id
+
+                else:
+                    if raw_tweet.id > newest_id or not newest_id:
+                        newest_id = raw_tweet.id
+
+                formatted_tweet = {
+                    TWEET.ID: raw_tweet.id,
+                    TWEET.TEXT: raw_tweet.full_text,
+                    TWEET.AUTHOR_ID: user_id,
+                    TWEET.AUTHOR_HANDLE: twitter_handle,
+                    TWEET.FAVOURITES_COUNT: raw_tweet.favorite_count,
+                    TWEET.RETWEET_COUNT: raw_tweet.retweet_count,
+                    TWEET.LAST_UPDATED: datetime.now()
+                }
+
+                # Tweet dates
+                date = datetime.strptime(raw_tweet.created_at, '%a %b %d %H:%M:%S +0000 %Y')
+                timestamp = calendar.timegm(date.timetuple())
+                formatted_tweet[TWEET.CREATED_AT] = date
+                formatted_tweet[TWEET.CREATED_AT_EPOCH] = timestamp
+
+                # Tweet hashtags
+                hashtags = []
+                for hashtag in raw_tweet.hashtags:
+                    hashtags.append(hashtag.text)
+
+                if hashtags:
+                    formatted_tweet[TWEET.HASHTAGS] = hashtags
+
+                # Tweet URLs
+                if raw_tweet.urls:
+                    url = raw_tweet.urls[0].url
+                    formatted_tweet[TWEET.URL] = url
+
+                # Retweet handling
+                if retweet:
+                    formatted_tweet[TWEET.AUTHOR_HANDLE] = retweet_user
+                    formatted_tweet[TWEET.RETWEETER_HANDLE] = twitter_handle
+                    retweet_list.append(formatted_tweet)
+
+                else:
+                    tweet_list.append(formatted_tweet)
+
+        if tweet_list:
+            self.db_connection.insert_tweets(tweet_list)
+
+        if retweet_list:
+            self.db_connection.insert_tweets(tweet_list=retweet_list, retweets=True)
+
+        if historic:
+            self.db_connection.update_mp(user_id=user_id, update={MP.OLDEST_ID: oldest_id,
+                                                                  MP.TWEET_COUNT: tweet_count,
+                                                                  MP.TWEETS_COLLECTED: tweets_collected})
+
+        else:
+            self.db_connection.update_mp(user_id=user_id, update={MP.NEWEST_ID: newest_id,
+                                                                  MP.TWEET_COUNT: tweet_count,
+                                                                  MP.TWEETS_COLLECTED: tweets_collected})
 
     def verify_credentials(self):
         return self.api.VerifyCredentials()
@@ -237,7 +348,10 @@ class Twitter(object):
         mp_list.close()
 
 db_connection = DBConnection()
+# db_connection.apply_field_to_all(field="newest_id", value=None, collection=DB.MP_COLLECTION)
 # db_connection.apply_field_to_all(field="oldest_id", value=None, collection=DB.MP_COLLECTION)
+# db_connection.apply_field_to_all(field="tweets_collected", value=0, collection=DB.MP_COLLECTION)
+
 twitter_api = Twitter(os.environ.get(CREDS.TWITTER_KEY),
                       os.environ.get(CREDS.TWITTER_SECRET),
                       os.environ.get(CREDS.TWITTER_TOKEN),
@@ -248,7 +362,18 @@ twitter_api = Twitter(os.environ.get(CREDS.TWITTER_KEY),
 #                                                                    filter={"twitter_handle": "@theresa_may"},
 #                                                                    projection={"twitter_handle": 1, "oldest_id": 1})[0])
 # twitter_api.update_all_mps()
-twitter_api.update_all_tweets(historic=True)
+
+mp_list = db_connection.find_document(collection=DB.MP_COLLECTION,
+                                              filter={},
+                                              projection={"twitter_handle": 1, "oldest_id": 1,
+                                                          "newest_id": 1, "tweet_count": 1,
+                                                          "tweets_collected": 1})
+
+for mp in mp_list:
+    twitter_api.get_tweets(mp_doc=mp, historic=True)
+
+mp_list.close()  # Close cursor
+# twitter_api.update_all_tweets(historic=True)
 
 
 
