@@ -152,7 +152,6 @@ class Twitter(object):
             data = self.api.GetUser(user_id=user_id)
         except:
             self.logger.warning("Twitter ID not found: %s" % user_id)
-            return {}  #Twitter handle doesn't exist
 
         if data.status:  # This MP has tweeted
             user_dict = {
@@ -166,7 +165,7 @@ class Twitter(object):
             self.db_connection.update_mp(data.id, user_dict)
 
         else:
-            print "MP: %s - has not tweeted" % user_id
+            self.logger.warning("MP: %s - has not tweeted" % user_id)
 
     def new_mp(self, twitter_handle):
         try:

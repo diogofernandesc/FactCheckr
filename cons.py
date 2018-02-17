@@ -3,16 +3,28 @@ class DB(object):
     TWEET_COLLECTION = "mp_tweets2"
     RETWEET_COLLECTION = "mp_retweets2"
     MP_COLLECTION = "mp_data"
-    NEWS_COLLECTION = 'news_headlines'
+    NEWS_ARTICLES = 'news_articles'
+    SOURCES_COLLECTION = "news_sources"
 
 
-class NEWS_HEADLINE(object):
+class NEWS_ARTICLE(object):
     DESCRIPTION = "description"
     TITLE = "title"
     URL = "url"
-    AUTHOR = "author"
+    SOURCE = "source"
     PUBLISH_DATE = "published_at"
     CATEGORY = "category"
+
+
+class NEWS_SOURCE(object):
+    CATEGORY = 'category'
+    DESCRIPTION = 'description'
+    LANGUAGE = 'language'
+    URL = 'url'
+    COUNTRY = 'country'
+    NAME = 'name'
+    NEWS_API_ID = 'news_api_id'
+    NEWS_API_FRIENDLY = 'news_api_friendly'  # Is it used by NEWS API
 
 
 class NEWS_CATEGORIES(object):
@@ -23,6 +35,20 @@ class NEWS_CATEGORIES(object):
     SCIENCE = "science"
     SPORTS = "sports"
     TECHNOLOGY = "technology"
+
+
+class NEWS_COUNTRIES(object):
+    USA = 'us'
+    UK = 'gb'
+
+
+class NEWS_API_PARAMS(object):
+    ENGLISH = 'en'
+    SORT_BY_RELEVANCY = 'relevancy'
+    SORT_BY_POPULARITY = 'popularity'
+    SORT_BY_NEWEST = 'publishedAt'
+    PAGE_SIZE = 100  # Default is 20 for API, gets max=100
+    SOURCE = 'sources'
 
 
 class MP(object):
@@ -39,6 +65,7 @@ class MP(object):
     TOPICS_OF_INTEREST = "topics_of_interest"
     TWEETS_COLLECTED = "tweets_collected"
 
+
 class TWEET(object):
     ID = "_id"
     TEXT = "text"
@@ -52,6 +79,7 @@ class TWEET(object):
     RETWEETER_HANDLE = "retweeter_handle"
     CREATED_AT = "created_at"
     CREATED_AT_EPOCH = "created_at_epoch"
+
 
 class CREDS(object):
     TWITTER_KEY = "TWITTER_KEY"

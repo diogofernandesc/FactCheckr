@@ -1,8 +1,9 @@
-import unittest
-from db_engine import DBConnection
-from twitter_engine import Twitter
-from cons import DB, CREDS
 import os
+import unittest
+
+from cons import DB, CREDS
+from ingest_engine.twitter_ingest import Twitter
+from db_engine import DBConnection
 
 
 class DBFindTest(unittest.TestCase):
