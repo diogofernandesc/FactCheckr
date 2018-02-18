@@ -25,7 +25,8 @@ class DBFindTest(unittest.TestCase):
         twitter_api = Twitter(os.getenv(CREDS.TWITTER_KEY),
                               os.getenv(CREDS.TWITTER_SECRET),
                               os.getenv(CREDS.TWITTER_TOKEN),
-                              os.getenv(CREDS.TWITTER_TOKEN_SECRET))
+                              os.getenv(CREDS.TWITTER_TOKEN_SECRET),
+                              self.db_connection)
 
         self.assertTrue(expr=twitter_api.verify_credentials(), msg="Could not validate Twitter credentials.")
 
