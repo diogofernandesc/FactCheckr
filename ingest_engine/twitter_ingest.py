@@ -1,9 +1,10 @@
 import calendar
-
+import sys
+sys.path.append("..")
 from python_twitter_fork import twitter
 from python_twitter_fork.twitter import TwitterError
 from db_engine import DBConnection
-from cons import DB, CREDS, MP, TWEET
+from cons import DB, CREDS, MP, TWEET, WOEIDS, TWITTER_TREND
 import os
 import time
 from datetime import datetime
@@ -12,6 +13,7 @@ from requests import ConnectionError
 
 
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
+
 
 
 class Twitter(object):
@@ -29,6 +31,48 @@ class Twitter(object):
             access_token_secret=self.access_token_secret,
             sleep_on_rate_limit=True
         )
+
+    def get_trends(self, location=WOEIDS.UK, globally=False):
+        """
+        Collect trends based on Location given by woeid: http://woeid.rosselliot.co.nz/lookup
+        :param location: woeid
+        :param globally: Boolean indicating whether to get global trends
+        :return:
+        """
+        trends_to_insert = []
+
+        if globally:
+            trends = self.api.GetTrendsCurrent()
+
+        else:
+            trends = self.api.GetTrendsWoeid(woeid=location)
+
+        for trend in trends:
+            trend = trend._json
+
+            trend_doc = {
+                TWITTER_TREND.NAME: trend[TWITTER_TREND.NAME],
+                TWITTER_TREND.URL: trend[TWITTER_TREND.URL],
+                TWITTER_TREND.TIMESTAMP: datetime.now(),
+                TWITTER_TREND.TIMESTAMP_EPOCH: time.time()
+            }
+
+            if globally:
+                trend_doc[TWITTER_TREND.LOCATION] = "Global"
+
+            else:
+                if location == WOEIDS.UK:
+                    trend_doc[TWITTER_TREND.LOCATION] = "United Kingdom"
+
+                elif location == WOEIDS.USA:
+                    trend_doc[TWITTER_TREND.LOCATION] = "United States"
+
+            if trend[TWITTER_TREND.TWEET_VOLUME]:  # If there is a value for tweet volume on this trend
+                trend_doc[TWITTER_TREND.TWEET_VOLUME] = trend[TWITTER_TREND.TWEET_VOLUME]
+
+            trends_to_insert.append(trend_doc)
+
+        self.db_connection.bulk_insert(data=trends_to_insert, collection=DB.TWITTER_TRENDS)
 
     def get_tweets(self, mp_doc, historic=False):
         '''
@@ -333,46 +377,88 @@ class Twitter(object):
             self.get_user_data(mp["_id"])
 
     def update_all_tweets(self, historic=False):
-        total_calls_to_api = 1
         mp_list = db_connection.find_document(collection=DB.MP_COLLECTION,
                                               filter={},
                                               projection={"twitter_handle": 1, "oldest_id": 1, "newest_id": 1})
         for mp in mp_list:
             self.logger.info("Updating ALL tweets for: %s" % mp["twitter_handle"])
-            total_calls_to_api += self.get_update_tweets(mp_doc=mp, historic=historic)
-            if total_calls_to_api % 850 == 0:
-                self.logger.info("Sleeping to control Twitter rate limit")
-                time.sleep(60 * 16)
+            self.get_tweets(mp_doc=mp, historic=historic)
 
         mp_list.close()
 
-db_connection = DBConnection()
+
+if __name__ == "__main__":
+    db_connection = DBConnection()
+    twitter_api = Twitter(os.environ.get(CREDS.TWITTER_KEY),
+                          os.environ.get(CREDS.TWITTER_SECRET),
+                          os.environ.get(CREDS.TWITTER_TOKEN),
+                          os.environ.get(CREDS.TWITTER_TOKEN_SECRET),
+                          db_connection)
+
+    if "trends" in sys.argv:
+        globally = "global" in sys.argv
+        is_uk = "UK" in sys.argv
+
+        location = WOEIDS.UK
+        if not is_uk and len(sys.argv) > 2:  # Check that no location has be inputted
+            location = WOEIDS.USA
+
+        while True:
+            twitter_api.get_trends(location=location, globally=globally)
+            time.sleep(60*60*2)  # Run every 2 hours
+
+    elif "tweets" in sys.argv:
+        historic = "historical" in sys.argv
+        while True:
+            twitter_api.update_all_tweets(historic=historic)
+            if historic:
+                break
+
+            time.sleep(60*60*24)
+
 # db_connection.apply_field_to_all(field="newest_id", value=None, collection=DB.MP_COLLECTION)
 # db_connection.apply_field_to_all(field="oldest_id", value=None, collection=DB.MP_COLLECTION)
 # db_connection.apply_field_to_all(field="tweets_collected", value=0, collection=DB.MP_COLLECTION)
 
-twitter_api = Twitter(os.environ.get(CREDS.TWITTER_KEY),
-                      os.environ.get(CREDS.TWITTER_SECRET),
-                      os.environ.get(CREDS.TWITTER_TOKEN),
-                      os.environ.get(CREDS.TWITTER_TOKEN_SECRET),
-                      db_connection)
 
-# twitter_api.get_previous_tweets(mp_doc=db_connection.find_document(collection=DB.MP_COLLECTION,
-#                                                                    filter={"twitter_handle": "@theresa_may"},
-#                                                                    projection={"twitter_handle": 1, "oldest_id": 1})[0])
-# twitter_api.update_all_mps()
 
-mp_list = db_connection.find_document(collection=DB.MP_COLLECTION,
-                                              filter={},
-                                              projection={"twitter_handle": 1, "oldest_id": 1,
-                                                          "newest_id": 1, "tweet_count": 1,
-                                                          "tweets_collected": 1})
 
-for mp in mp_list:
-    twitter_api.get_tweets(mp_doc=mp, historic=True)
 
-mp_list.close()  # Close cursor
-# twitter_api.update_all_tweets(historic=True)
+
+
+
+
+#
+#
+# db_connection = DBConnection()
+# # db_connection.apply_field_to_all(field="newest_id", value=None, collection=DB.MP_COLLECTION)
+# # db_connection.apply_field_to_all(field="oldest_id", value=None, collection=DB.MP_COLLECTION)
+# # db_connection.apply_field_to_all(field="tweets_collected", value=0, collection=DB.MP_COLLECTION)
+#
+# twitter_api = Twitter(os.environ.get(CREDS.TWITTER_KEY),
+#                       os.environ.get(CREDS.TWITTER_SECRET),
+#                       os.environ.get(CREDS.TWITTER_TOKEN),
+#                       os.environ.get(CREDS.TWITTER_TOKEN_SECRET),
+#                       db_connection)
+#
+# twitter_api.get_trends(globally=True)
+# #
+# # # twitter_api.get_previous_tweets(mp_doc=db_connection.find_document(collection=DB.MP_COLLECTION,
+# # #                                                                    filter={"twitter_handle": "@theresa_may"},
+# # #                                                                    projection={"twitter_handle": 1, "oldest_id": 1})[0])
+# # # twitter_api.update_all_mps()
+# #
+# # mp_list = db_connection.find_document(collection=DB.MP_COLLECTION,
+# #                                               filter={},
+# #                                               projection={"twitter_handle": 1, "oldest_id": 1,
+# #                                                           "newest_id": 1, "tweet_count": 1,
+# #                                                           "tweets_collected": 1})
+# #
+# # for mp in mp_list:
+# #     twitter_api.get_tweets(mp_doc=mp, historic=True)
+# #
+# # mp_list.close()  # Close cursor
+# # twitter_api.update_all_tweets(historic=True)
 
 
 

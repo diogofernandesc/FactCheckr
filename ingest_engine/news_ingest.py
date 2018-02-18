@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import time
 import re
 from newsapi import NewsApiClient
 from db_engine import DBConnection
@@ -87,7 +88,12 @@ class NewsClient(object):
             if article_count > total_articles:
                 break
 
-client = NewsClient()
-# client.get_sources()
-# client.get_top_headlines()
-client.get_articles()
+
+if __name__ == "__main__":
+    client = NewsClient()
+
+    # Collect articles every 12 hours
+    while True:
+        since = datetime.now() - timedelta(hours=12)
+        client.get_articles(since=since)
+        time.sleep(60*60*12)  # sleep for 12 hours

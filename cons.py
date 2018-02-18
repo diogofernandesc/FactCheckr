@@ -1,10 +1,11 @@
 class DB(object):
     NAME = "ip_db"
-    TWEET_COLLECTION = "mp_tweets2"
-    RETWEET_COLLECTION = "mp_retweets2"
+    TWEET_COLLECTION = "mp_tweets"
+    RETWEET_COLLECTION = "mp_retweets"
     MP_COLLECTION = "mp_data"
     NEWS_ARTICLES = 'news_articles'
     SOURCES_COLLECTION = "news_sources"
+    TWITTER_TRENDS = "twitter_trends"
 
 
 class NEWS_ARTICLE(object):
@@ -64,6 +65,20 @@ class MP(object):
     NAME = "name"
     TOPICS_OF_INTEREST = "topics_of_interest"
     TWEETS_COLLECTED = "tweets_collected"
+
+
+class WOEIDS(object):
+    UK = 23424975
+    USA = 23424977
+
+
+class TWITTER_TREND(object):
+    NAME = "name"
+    TWEET_VOLUME = "tweet_volume"
+    URL = "url"
+    TIMESTAMP = "timestamp"
+    TIMESTAMP_EPOCH = "timestamp_epoch"
+    LOCATION = "location"
 
 
 class TWEET(object):
