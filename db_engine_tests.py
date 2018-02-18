@@ -1,8 +1,9 @@
-import unittest
-from db_engine import DBConnection
-from twitter_engine import Twitter
-from cons import DB, CREDS
 import os
+import unittest
+
+from cons import DB, CREDS
+from ingest_engine.twitter_ingest import Twitter
+from db_engine import DBConnection
 
 
 class DBFindTest(unittest.TestCase):
@@ -24,7 +25,8 @@ class DBFindTest(unittest.TestCase):
         twitter_api = Twitter(os.getenv(CREDS.TWITTER_KEY),
                               os.getenv(CREDS.TWITTER_SECRET),
                               os.getenv(CREDS.TWITTER_TOKEN),
-                              os.getenv(CREDS.TWITTER_TOKEN_SECRET))
+                              os.getenv(CREDS.TWITTER_TOKEN_SECRET),
+                              self.db_connection)
 
         self.assertTrue(expr=twitter_api.verify_credentials(), msg="Could not validate Twitter credentials.")
 

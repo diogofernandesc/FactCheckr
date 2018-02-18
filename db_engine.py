@@ -1,15 +1,15 @@
-from pymongo import MongoClient, bulk
-from scraper_engine import Scraper
-from cons import DB
-import os
 import logging
+import os
+
+from pymongo import MongoClient, bulk
+
+from cons import DB
 
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 
 
 class DBConnection(object):
     def __init__(self):
-        # value = os.getenv("USER_MONGO")
         self.client = MongoClient("mongodb://%s:%s@%s:27017" % (
             os.getenv("USER_MONGO"),
             os.getenv("PASS_MONGO"),
@@ -18,7 +18,6 @@ class DBConnection(object):
 
         # Testing:
         # self.client = MongoClient("mongodb://localhost:27017")
-        # self.scraper = Scraper("http://www.mpsontwitter.co.uk/list")
         self.db = self.client.ip_db
         self.bulkWrite = []
         self.logger = logging.getLogger(__name__)
@@ -35,34 +34,36 @@ class DBConnection(object):
 
             response = bulk_insert.execute()
 
-        except:
+        except Exception as e:
             self.logger.info("Duplicate insertion ignored")
 
-    def insert_news_headlines(self, headline_list):
+    def bulk_insert(self, data, collection):
+        """
+        Bulk insert when data is NOT tweets
+        :param data: payload to insert
+        :param collection: mongo collection to insert in
+        :return:
+        """
         try:
-            collection = DB.NEWS_COLLECTION
             bulk_insert = bulk.BulkOperationBuilder(collection=self.db[collection], ordered=False)
-            for headline in headline_list:
-                bulk_insert.insert(headline)
+            for item in data:
+                bulk_insert.insert(item)
 
             response = bulk_insert.execute()
 
         except Exception as e:
-            self.logger.info("Avoided inserting duplicate news headline")
+            if collection == DB.NEWS_ARTICLES:
+                self.logger.info("Avoided inserting duplicate news articles")
 
-        # self.db[DB.TWEET_COLLECTION].insert_many(tweet_list, ordered=False)
+            elif collection == DB.SOURCES_COLLECTION:
+                self.logger.info("Avoided insert duplicate news source")
 
     def apply_field_to_all(self, field, value, collection):
-        result = self.db[collection].update_many({"author_handle": "@AdamAfriyie"}, {'$set': {field: value}})
-        print result.matched_count
+        result = self.db[collection].update_many({}, {'$set': {field: value}}, upsert=True)
+        self.logger.info(result.matched_count)
 
     def insert_tweet(self, tweet):
         self.db[DB.TWEET_COLLECTION].insert_one(tweet)
-
-    # def insert_mps(self):
-        # mp_list = self.scraper.scrape_page()
-        # mp_data = self.db.mp_data
-        # result = mp_data.insert_many(mp_list)
 
     def start_bulk_write(self):
         self.bulkWrite = []
@@ -72,10 +73,10 @@ class DBConnection(object):
             self.db[collection].bulk_write(self.bulkWrite, ordered=ordered)
             self.bulkWrite = []
         except self.client.BulkWriteError as bwe:
-            print(bwe.details)
+            self.logger.warning(bwe.details)
 
     def find_document(self, collection, filter=None, projection=None):
-        return self.db[collection].find(filter=filter, projection=projection, no_cursor_timeout=False)
+        return self.db[collection].find(filter=filter, projection=projection, no_cursor_timeout=True)
 
     def find_and_update(self, collection, query=None, update=None):
         result = self.db[collection].update_one(query, update)
