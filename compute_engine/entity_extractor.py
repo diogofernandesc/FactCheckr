@@ -3,6 +3,7 @@ from watson_developer_cloud.natural_language_understanding_v1 import Features, K
 import os
 from db_engine import DBConnection
 from cons import DB
+import re
 
 
 class EntityExtractor(object):
@@ -14,14 +15,18 @@ class EntityExtractor(object):
         self.db_connection.apply_field_to_all(field="entities", value=None, collection=DB.TWEET_COLLECTION)
 
     def analyse(self):
-        for tweet in self.db_connection.find_document(collection=DB.TWEET_COLLECTION,
+        tweets = self.db_connection.find_document(collection=DB.TWEET_COLLECTION,
                                                       filter={"author_handle": "@AdamAfriyie"},
-                                                      projection={"text": 1}):
+                                                      projection={"text": 1})
 
+        tweets = map(lambda x: x["text"], tweets)  # Combine list into just text content
+        regex_remove = "(@[A-Za-z0-9]+)|([^0-9A-Za-z \t])|(\w+:\/\/\S+)|^RT|http.+?"
+        stripped_tweets = [re.sub(regex_remove, '', tweet).strip() for tweet in tweets]
+
+        for tweet in stripped_tweets:
             keywords = []
             entities = []
-
-            response = self.nlu.analyze(text=tweet["text"], features=Features(keywords=KeywordsOptions(),
+            response = self.nlu.analyze(text=tweet, features=Features(keywords=KeywordsOptions(),
                                                                      entities=EntitiesOptions(),
                                                                      relations=RelationsOptions()))
             for keyword in response['keywords']:
