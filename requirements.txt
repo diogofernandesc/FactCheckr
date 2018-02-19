@@ -3,3 +3,4 @@ requests
 bs4
 python-twitter
 newsapi-python
+rake-nltk

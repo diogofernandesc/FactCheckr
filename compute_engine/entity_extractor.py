@@ -2,6 +2,9 @@ from watson_developer_cloud import NaturalLanguageUnderstandingV1
 from watson_developer_cloud.natural_language_understanding_v1 import Features, KeywordsOptions, EntitiesOptions, RelationsOptions
 import os
 from db_engine import DBConnection
+from rake_nltk import Rake
+
+
 from cons import DB
 
 
@@ -12,6 +15,7 @@ class EntityExtractor(object):
                                                   username=os.getenv('IBM_USER'), password=os.getenv('IBM_PASS'))
         self.db_connection.apply_field_to_all(field="keywords", value=None, collection=DB.TWEET_COLLECTION)
         self.db_connection.apply_field_to_all(field="entities", value=None, collection=DB.TWEET_COLLECTION)
+        self.rake = Rake()
 
     def analyse(self):
         for tweet in self.db_connection.find_document(collection=DB.TWEET_COLLECTION,
@@ -21,9 +25,12 @@ class EntityExtractor(object):
             keywords = []
             entities = []
 
+            self.rake.extract_keywords_from_text(text=tweet["text"])
+            response_rake = self.rake.get_ranked_phrases()
+
             response = self.nlu.analyze(text=tweet["text"], features=Features(keywords=KeywordsOptions(),
-                                                                     entities=EntitiesOptions(),
-                                                                     relations=RelationsOptions()))
+                                                                              entities=EntitiesOptions(),
+                                                                              relations=RelationsOptions()))
             for keyword in response['keywords']:
                 keywords.append(keyword['text'])
 
