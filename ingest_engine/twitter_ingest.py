@@ -3,6 +3,8 @@ import sys
 
 import re
 
+from urllib3.exceptions import NewConnectionError
+
 sys.path.append("..")
 from python_twitter_fork import twitter
 from python_twitter_fork.twitter import TwitterError
@@ -402,6 +404,33 @@ class Twitter(object):
         mp_list.close()
 
 
+def main(db_connection, twitter_api):
+    try:
+        if "trends" in sys.argv:
+            globally = "global" in sys.argv
+            is_uk = "UK" in sys.argv
+
+            location = WOEIDS.UK
+            if not is_uk and len(sys.argv) > 2:  # Check that no location has be inputted
+                location = WOEIDS.USA
+
+            while True:
+                twitter_api.get_trends(location=location, globally=globally)
+                time.sleep(60*60*2)  # Run every 2 hours
+
+        elif "tweets" in sys.argv:
+            historic = "historical" in sys.argv
+            while True:
+                twitter_api.update_all_tweets(historic=historic)
+                if historic:
+                    break
+
+                time.sleep(60*60*24)
+
+    except NewConnectionError as e:
+        twitter_api.logger.info("Restarting script due to %s" % e.message)
+        main(db_connection, twitter_api)
+
 if __name__ == "__main__":
     db_connection = DBConnection()
     twitter_api = Twitter(os.environ.get(CREDS.TWITTER_KEY),
@@ -410,30 +439,12 @@ if __name__ == "__main__":
                           os.environ.get(CREDS.TWITTER_TOKEN_SECRET),
                           db_connection)
 
+    main(db_connection, twitter_api)
+
     # db_connection.apply_field_to_all(field="newest_id", value=None, collection=DB.MP_COLLECTION)
     # db_connection.apply_field_to_all(field="oldest_id", value=None, collection=DB.MP_COLLECTION)
     # db_connection.apply_field_to_all(field="tweets_collected", value=0, collection=DB.MP_COLLECTION)
 
-    if "trends" in sys.argv:
-        globally = "global" in sys.argv
-        is_uk = "UK" in sys.argv
-
-        location = WOEIDS.UK
-        if not is_uk and len(sys.argv) > 2:  # Check that no location has be inputted
-            location = WOEIDS.USA
-
-        while True:
-            twitter_api.get_trends(location=location, globally=globally)
-            time.sleep(60*60*2)  # Run every 2 hours
-
-    elif "tweets" in sys.argv:
-        historic = "historical" in sys.argv
-        while True:
-            twitter_api.update_all_tweets(historic=historic)
-            if historic:
-                break
-
-            time.sleep(60*60*24)
 
 
 
