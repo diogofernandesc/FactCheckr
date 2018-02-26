@@ -71,20 +71,23 @@ class NewsClient(object):
 
             if "totalResults" in news_payload:
                 total_articles = news_payload["totalResults"]
+            
+            raw_articles = None
+            if "articles" in news_payload:
+                article_count += len(news_payload["articles"])
+                raw_articles = news_payload["articles"]
 
-            article_count += len(news_payload["articles"])
-
-            raw_articles = news_payload["articles"]
-            for article in raw_articles:
-                if not stop_words.search(article["url"]):  # Avoid URLs with the given stop words in them
-                    date = datetime.strptime(article["publishedAt"], '%Y-%m-%dT%H:%M:%SZ')
-                    articles_to_insert.append({
-                        NEWS_ARTICLE.DESCRIPTION: article["description"],
-                        NEWS_ARTICLE.TITLE: article["title"],
-                        NEWS_ARTICLE.URL: article["url"],
-                        NEWS_ARTICLE.SOURCE: article["source"]["name"],
-                        NEWS_ARTICLE.PUBLISH_DATE: date,
-                    })
+            if raw_articles:
+                for article in raw_articles:
+                    if not stop_words.search(article["url"]):  # Avoid URLs with the given stop words in them
+                        date = datetime.strptime(article["publishedAt"], '%Y-%m-%dT%H:%M:%SZ')
+                        articles_to_insert.append({
+                            NEWS_ARTICLE.DESCRIPTION: article["description"],
+                            NEWS_ARTICLE.TITLE: article["title"],
+                            NEWS_ARTICLE.URL: article["url"],
+                            NEWS_ARTICLE.SOURCE: article["source"]["name"],
+                            NEWS_ARTICLE.PUBLISH_DATE: date,
+                        })
 
             page_no += 1
 
