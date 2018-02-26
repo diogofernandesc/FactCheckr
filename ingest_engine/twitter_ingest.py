@@ -156,6 +156,7 @@ class Twitter(object):
                     formatted_tweet[TWEET.HASHTAGS] = hashtags
 
                 # Tweet URLs
+                url = None
                 if raw_tweet.urls:
                     url = raw_tweet.urls[0].url
                     formatted_tweet[TWEET.URL] = url
