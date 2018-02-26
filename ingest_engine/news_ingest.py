@@ -71,7 +71,8 @@ class NewsClient(object):
 
             if "totalResults" in news_payload:
                 total_articles = news_payload["totalResults"]
-
+            
+            raw_articles = None
             if "articles" in news_payload:
                 article_count += len(news_payload["articles"])
                 raw_articles = news_payload["articles"]
