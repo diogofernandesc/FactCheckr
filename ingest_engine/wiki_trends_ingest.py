@@ -1,3 +1,5 @@
+import sys
+sys.path.append("..")
 from db_engine import DBConnection
 from mwviews.api import PageviewsClient
 from datetime import datetime, timedelta
