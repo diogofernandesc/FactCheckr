@@ -1,3 +1,5 @@
+import sys
+sys.path.append("..")
 from datetime import datetime, timedelta
 import time
 import re
@@ -67,26 +69,14 @@ class NewsClient(object):
                                                    from_parameter=since, sort_by=sort_by, page=page_no,
                                                    page_size=NEWS_API_PARAMS.PAGE_SIZE)
 
-<<<<<<< Updated upstream
-            total_articles = news_payload["totalResults"]
-            article_count += len(news_payload["articles"])
-
-            raw_articles = news_payload["articles"]
-            for article in raw_articles:
-                if not stop_words.search(article["url"]):  # Avoid URLs with the given stop words in them
-                    date = datetime.strptime(article["publishedAt"], '%Y-%m-%dT%H:%M:%SZ')
-                    articles_to_insert.append({
-                        NEWS_ARTICLE.DESCRIPTION: article["description"],
-                        NEWS_ARTICLE.TITLE: article["title"],
-                        NEWS_ARTICLE.URL: article["url"],
-                        NEWS_ARTICLE.SOURCE: article["source"]["name"],
-                        NEWS_ARTICLE.PUBLISH_DATE: date,
-                    })
-=======
             total_articles = None
             if "totalResults" in news_payload:
                 total_articles = news_payload["totalResults"]
 
+            if "totalResults" in news_payload:
+                total_articles = news_payload["totalResults"]
+            
+            raw_articles = None
             if "articles" in news_payload:
                 article_count += len(news_payload["articles"])
                 raw_articles = news_payload["articles"]
@@ -102,7 +92,6 @@ class NewsClient(object):
                             NEWS_ARTICLE.SOURCE: article["source"]["name"],
                             NEWS_ARTICLE.PUBLISH_DATE: date,
                         })
->>>>>>> Stashed changes
 
             page_no += 1
 
