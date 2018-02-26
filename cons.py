@@ -6,6 +6,7 @@ class DB(object):
     NEWS_ARTICLES = 'news_articles'
     SOURCES_COLLECTION = "news_sources"
     TWITTER_TRENDS = "twitter_trends"
+    WIKI_TRENDS = "wiki_trends"
 
 
 class NEWS_ARTICLE(object):
@@ -50,6 +51,22 @@ class NEWS_API_PARAMS(object):
     SORT_BY_NEWEST = 'publishedAt'
     PAGE_SIZE = 100  # Default is 20 for API, gets max=100
     SOURCE = 'sources'
+
+class WIKI_SOURCES(object):
+    ENGLISH_WIKIPEDIA = "en.wikipedia"
+
+
+class WIKI_TREND(object):
+    NAME = "name"
+    RANK = "rank"
+    VIEWS = "views"
+    DATE_STRING = "nice_date"
+    DATE_OBJECT = "date"
+    TIMESTAMP = "epoch_timestamp"
+    MONTH = "month"
+    WEEKDAY = "week_day"
+    MONTH_DAY = "month_day"
+    YEAR = "year"
 
 
 class MP(object):
