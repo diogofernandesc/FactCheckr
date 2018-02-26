@@ -121,12 +121,12 @@ from cons import DB
 import re
 from nltk.tokenize import RegexpTokenizer
 from nltk.stem.wordnet import WordNetLemmatizer
-from nltk.corpus import stopwords
 from gensim.models import LdaModel, Phrases
 from gensim.corpora import Dictionary
+from tweet_handler import TweetHandler
 
 
-class TopicModelling(object):
+class TopicModelling(TweetHandler):
     def __init__(self):
         self.db_connection = DBConnection()
         self.tweets = self.get_clean()
@@ -135,27 +135,6 @@ class TopicModelling(object):
         self.bigrams(self.tweets)
         self.vectorize(self.tweets)
         self.train()
-
-    def get_clean(self):
-        """
-        Get tweets for specific MP and clean tweet
-        :return: Clean tweets for a given MP
-        """
-        tweets = self.db_connection.find_document(collection=DB.TWEET_COLLECTION,
-                                                  filter={"author_handle": "@AdamAfriyie"},
-                                                  projection={"text": 1})
-
-        stop_words = set(stopwords.words('english'))
-        tweets = map(lambda x: x["text"].lower(), tweets)  # Combine list into just text content
-
-        regex_remove = "(@[A-Za-z0-9]+)|([^0-9A-Za-z \t])|&amp;|amp|(\w+:\/\/\S+)|^RT|http.+?"
-        tweets = [re.sub(regex_remove, '', tweet).strip() for tweet in tweets]
-        clean_tweets = []
-        # Stop word removal from tweet
-        for tweet in tweets:
-            clean_tweets.append(" ".join(word for word in tweet.split() if word not in stop_words))
-
-        return clean_tweets
 
     def tokenize(self, tweets):
         """

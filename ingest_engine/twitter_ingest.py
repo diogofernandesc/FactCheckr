@@ -1,5 +1,8 @@
 import calendar
 import sys
+
+import re
+
 sys.path.append("..")
 from python_twitter_fork import twitter
 from python_twitter_fork.twitter import TwitterError
@@ -156,6 +159,16 @@ class Twitter(object):
                 if raw_tweet.urls:
                     url = raw_tweet.urls[0].url
                     formatted_tweet[TWEET.URL] = url
+
+                # Links in URL
+                link_list = []
+                potential_links = re.findall(r'(https?://[^\s]+)', raw_tweet.full_text)
+                for link in potential_links:  # Only add links that are not the tweet URL
+                    if not url or link != url:
+                        link_list.append(link)
+
+                if link_list:
+                    formatted_tweet[TWEET.LINKS] = link_list
 
                 # Retweet handling
                 if retweet:
@@ -379,7 +392,8 @@ class Twitter(object):
     def update_all_tweets(self, historic=False):
         mp_list = db_connection.find_document(collection=DB.MP_COLLECTION,
                                               filter={},
-                                              projection={"twitter_handle": 1, "oldest_id": 1, "newest_id": 1})
+                                              projection={"twitter_handle": 1, "oldest_id": 1,
+                                                          "newest_id": 1, "tweet_count": 1, "tweets_collected": 1})
         for mp in mp_list:
             self.logger.info("Updating ALL tweets for: %s" % mp["twitter_handle"])
             self.get_tweets(mp_doc=mp, historic=historic)
@@ -394,6 +408,10 @@ if __name__ == "__main__":
                           os.environ.get(CREDS.TWITTER_TOKEN),
                           os.environ.get(CREDS.TWITTER_TOKEN_SECRET),
                           db_connection)
+
+    # db_connection.apply_field_to_all(field="newest_id", value=None, collection=DB.MP_COLLECTION)
+    # db_connection.apply_field_to_all(field="oldest_id", value=None, collection=DB.MP_COLLECTION)
+    # db_connection.apply_field_to_all(field="tweets_collected", value=0, collection=DB.MP_COLLECTION)
 
     if "trends" in sys.argv:
         globally = "global" in sys.argv
@@ -416,9 +434,7 @@ if __name__ == "__main__":
 
             time.sleep(60*60*24)
 
-# db_connection.apply_field_to_all(field="newest_id", value=None, collection=DB.MP_COLLECTION)
-# db_connection.apply_field_to_all(field="oldest_id", value=None, collection=DB.MP_COLLECTION)
-# db_connection.apply_field_to_all(field="tweets_collected", value=0, collection=DB.MP_COLLECTION)
+
 
 
 
