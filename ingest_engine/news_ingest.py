@@ -69,7 +69,9 @@ class NewsClient(object):
                                                    from_parameter=since, sort_by=sort_by, page=page_no,
                                                    page_size=NEWS_API_PARAMS.PAGE_SIZE)
 
-            total_articles = news_payload["totalResults"]
+            if "totalResults" in news_payload:
+                total_articles = news_payload["totalResults"]
+
             article_count += len(news_payload["articles"])
 
             raw_articles = news_payload["articles"]
