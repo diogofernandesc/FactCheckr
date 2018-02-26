@@ -5,10 +5,13 @@ from newsapi import NewsApiClient
 from db_engine import DBConnection
 import os
 from cons import NEWS_ARTICLE, NEWS_CATEGORIES, NEWS_API_PARAMS, NEWS_SOURCE, NEWS_COUNTRIES, DB
+import logging
 
+logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 
 class NewsClient(object):
     def __init__(self):
+        self.logger = logging.getLogger(__name__)
         self.api = NewsApiClient(api_key=os.getenv("NEWS_API_KEY"))
         self.db_connection = DBConnection()
 
@@ -96,4 +99,7 @@ if __name__ == "__main__":
     while True:
         since = datetime.now() - timedelta(hours=12)
         client.get_articles(since=since)
+        client.logger.info("Getting news articles since month: %s, day: %s, hour: %s" % (since.month,
+                                                                                         since.day,
+                                                                                         since.hour))
         time.sleep(60*60*12)  # sleep for 12 hours

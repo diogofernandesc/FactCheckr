@@ -4,11 +4,16 @@ from datetime import datetime, timedelta
 import calendar
 from cons import WIKI_SOURCES, WIKI_TREND, DB
 import time
+import logging
+import os
+
+logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 
 
 class WikiIngest(object):
     def __init__(self):
         self.db_connection = DBConnection()
+        self.logger = logging.getLogger(__name__)
         self.api = PageviewsClient("Mozilla/5.0 (X11; Linux x86_64)"
                                    " AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36")
 
@@ -43,4 +48,8 @@ if __name__ == "__main__":
     wiki_ingest = WikiIngest()
     while True:
         wiki_ingest.get_top_articles()
+        yesterday = datetime.now() - timedelta(days=1)
+        wiki_ingest.logger.info("Getting wikipedia trends for month: %s, day: %s, hour: %s" % (yesterday.month,
+                                                                                               yesterday.day,
+                                                                                               yesterday.hour))
         time.sleep(60*60*24)
