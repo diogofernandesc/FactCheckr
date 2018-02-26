@@ -94,6 +94,7 @@ class TWEET(object):
     RETWEETER_HANDLE = "retweeter_handle"
     CREATED_AT = "created_at"
     CREATED_AT_EPOCH = "created_at_epoch"
+    LINKS = "links"
 
 
 class CREDS(object):
