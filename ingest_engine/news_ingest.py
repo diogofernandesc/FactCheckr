@@ -107,9 +107,9 @@ class NewsClient(object):
 if __name__ == "__main__":
     client = NewsClient()
 
-    # Collect articles every 12 hours
+    # Collect articles every 4 hours
     while True:
-        since = datetime.now() - timedelta(hours=12)
+        since = datetime.now() - timedelta(hours=4)
         client.get_articles(since=since)
         client.logger.info("Getting news articles since month: %s, day: %s, hour: %s" % (since.month,
                                                                                          since.day,
