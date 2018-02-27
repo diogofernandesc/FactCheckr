@@ -96,22 +96,22 @@ class NewsClient(object):
 
             page_no += 1
 
-            if len(articles_to_insert) >= batch_size:
+            if raw_articles:
                 self.db_connection.bulk_insert(data=articles_to_insert, collection=DB.NEWS_ARTICLES)
                 articles_to_insert = []
 
-            if not total_articles or article_count > total_articles:
+            if not raw_articles:
                 break
 
 
 if __name__ == "__main__":
     client = NewsClient()
 
-    # Collect articles every 4 hours
+    # Collect articles every 24 hours
     while True:
-        since = datetime.now() - timedelta(hours=4)
+        since = datetime.now() - timedelta(hours=24)
         client.get_articles(since=since)
         client.logger.info("Getting news articles since month: %s, day: %s, hour: %s" % (since.month,
                                                                                          since.day,
                                                                                          since.hour))
-        time.sleep(60*60*4)  # sleep for 4 hours
+        time.sleep(60*60*24)  # sleep for 24 hours
