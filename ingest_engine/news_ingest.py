@@ -113,4 +113,4 @@ if __name__ == "__main__":
         client.logger.info("Getting news articles since month: %s, day: %s, hour: %s" % (since.month,
                                                                                          since.day,
                                                                                          since.hour))
-        time.sleep(60*60*12)  # sleep for 12 hours
+        time.sleep(60*60*4)  # sleep for 4 hours

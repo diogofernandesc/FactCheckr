@@ -431,6 +431,12 @@ def main(db_connection, twitter_api):
         twitter_api.logger.info("Restarting script due to %s" % e.message)
         main(db_connection, twitter_api)
 
+    except TwitterError as e:
+        twitter_api.logger.info("Twitter API errors: %s ----- sleeping for 15 mins" % e.message)
+        time.sleep(60*15)
+        main(db_connection, twitter_api)
+
+
 if __name__ == "__main__":
     db_connection = DBConnection()
     twitter_api = Twitter(os.environ.get(CREDS.TWITTER_KEY),
@@ -444,17 +450,6 @@ if __name__ == "__main__":
     # db_connection.apply_field_to_all(field="newest_id", value=None, collection=DB.MP_COLLECTION)
     # db_connection.apply_field_to_all(field="oldest_id", value=None, collection=DB.MP_COLLECTION)
     # db_connection.apply_field_to_all(field="tweets_collected", value=0, collection=DB.MP_COLLECTION)
-
-
-
-
-
-
-
-
-
-
-
 
 #
 #
