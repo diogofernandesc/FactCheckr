@@ -7,7 +7,7 @@ from urllib3.exceptions import NewConnectionError
 
 sys.path.append("..")
 from python_twitter_fork import twitter
-from python_twitter_fork.twitter import TwitterError
+from python_twitter_fork.twitter.error import TwitterError
 from db_engine import DBConnection
 from cons import DB, CREDS, MP, TWEET, WOEIDS, TWITTER_TREND
 import os
@@ -110,7 +110,7 @@ class Twitter(object):
                                                   max_id=oldest_id,
                                                   )
 
-            if not raw_tweets:  # Break if API limit reached
+            if not raw_tweets or len(raw_tweets) == 1:  # Break if API limit reached
                 break
 
             tweets_collected += len(raw_tweets)

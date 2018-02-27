@@ -11,6 +11,7 @@ import logging
 
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 
+
 class NewsClient(object):
     def __init__(self):
         self.logger = logging.getLogger(__name__)
