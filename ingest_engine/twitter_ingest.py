@@ -14,7 +14,7 @@ import os
 import time
 from datetime import datetime
 import logging
-from requests import ConnectionError
+from requests.exceptions import ConnectionError
 
 
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
@@ -431,6 +431,10 @@ def main(db_connection, twitter_api):
         twitter_api.logger.info("Restarting script due to %s" % e.message)
         main(db_connection, twitter_api)
 
+    except ConnectionError as e:
+        twitter_api.logger.info("Restarting script due to %s" % e.message)
+        main(db_connection, twitter_api)
+        
     except TwitterError as e:
         twitter_api.logger.info("Twitter API errors: %s ----- sleeping for 15 mins" % e.message)
         time.sleep(60*15)
