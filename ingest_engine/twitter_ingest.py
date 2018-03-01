@@ -440,11 +440,11 @@ if __name__ == "__main__":
 
     except NewConnectionError as e:
         twitter_api.logger.info("Restarting script due to %s" % e.message)
-        main(db_connection, twitter_api)
+        main(twitter_api)
 
     except ConnectionError as e:
         twitter_api.logger.info("Restarting script due to %s" % e.message)
-        main(db_connection, twitter_api)
+        main(twitter_api)
 
     except TwitterError as e:
         twitter_api.logger.info("Twitter API errors: %s ----- sleeping for 15 mins" % e.message)
