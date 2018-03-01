@@ -393,7 +393,7 @@ class Twitter(object):
             self.get_user_data(mp["_id"])
 
     def update_all_tweets(self, historic=False):
-        mp_list = db_connection.find_document(collection=DB.MP_COLLECTION,
+        mp_list = self.db_connection.find_document(collection=DB.MP_COLLECTION,
                                               filter={},
                                               projection={"twitter_handle": 1, "oldest_id": 1,
                                                           "newest_id": 1, "tweet_count": 1, "tweets_collected": 1})
