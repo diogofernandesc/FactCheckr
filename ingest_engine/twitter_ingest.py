@@ -398,8 +398,9 @@ class Twitter(object):
                                               projection={"twitter_handle": 1, "oldest_id": 1,
                                                           "newest_id": 1, "tweet_count": 1, "tweets_collected": 1})
         for mp in mp_list:
-            self.logger.info("Updating ALL tweets for: %s" % mp["twitter_handle"])
-            self.get_tweets(mp_doc=mp, historic=historic)
+            if mp["twitter_handle"] != "@GrahamJones_MP":
+                self.logger.info("Updating ALL tweets for: %s" % mp["twitter_handle"])
+                self.get_tweets(mp_doc=mp, historic=historic)
 
         mp_list.close()
 
@@ -435,18 +436,19 @@ def main():
 
                 time.sleep(60*60*24)
 
-    except NewConnectionError as e:
+    except (NewConnectionError, ConnectionError, TwitterError) as e:
         logger.info("Restarting script due to %s" % e.message)
-        main()
-
-    except ConnectionError as e:
-        logger.info("Restarting script due to %s" % e.message)
-        main()
-
-    except TwitterError as e:
-        logger.info("Twitter API errors: %s ----- sleeping for 15 mins" % e.message)
         time.sleep(60 * 15)
         main()
+
+    # except ConnectionError as e:
+    #     logger.info("Restarting script due to %s" % e.message)
+    #     main()
+    #
+    # except TwitterError as e:
+    #     logger.info("Twitter API errors: %s ----- sleeping for 15 mins" % e.message)
+    #     time.sleep(60 * 15)
+    #     main()
 
 
 if __name__ == "__main__":
