@@ -436,7 +436,7 @@ if __name__ == "__main__":
                               os.environ.get(CREDS.TWITTER_TOKEN_SECRET),
                               db_connection)
 
-        main(db_connection, twitter_api)
+        main(twitter_api)
 
     except NewConnectionError as e:
         twitter_api.logger.info("Restarting script due to %s" % e.message)
