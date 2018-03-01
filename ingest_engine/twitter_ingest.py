@@ -18,7 +18,7 @@ from requests.exceptions import ConnectionError
 
 
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
-
+logger = logging.getLogger(__name__)
 
 
 class Twitter(object):
@@ -404,7 +404,14 @@ class Twitter(object):
         mp_list.close()
 
 
-def main(twitter_api):
+def main():
+    db_connection = DBConnection()
+    twitter_api = Twitter(os.environ.get(CREDS.TWITTER_KEY),
+                          os.environ.get(CREDS.TWITTER_SECRET),
+                          os.environ.get(CREDS.TWITTER_TOKEN),
+                          os.environ.get(CREDS.TWITTER_TOKEN_SECRET),
+                          db_connection)
+
     if "trends" in sys.argv:
         globally = "global" in sys.argv
         is_uk = "UK" in sys.argv
@@ -429,27 +436,20 @@ def main(twitter_api):
 
 if __name__ == "__main__":
     try:
-        db_connection = DBConnection()
-        twitter_api = Twitter(os.environ.get(CREDS.TWITTER_KEY),
-                              os.environ.get(CREDS.TWITTER_SECRET),
-                              os.environ.get(CREDS.TWITTER_TOKEN),
-                              os.environ.get(CREDS.TWITTER_TOKEN_SECRET),
-                              db_connection)
-
-        main(twitter_api)
+        main()
 
     except NewConnectionError as e:
-        twitter_api.logger.info("Restarting script due to %s" % e.message)
-        main(twitter_api)
+        logger.info("Restarting script due to %s" % e.message)
+        main()
 
     except ConnectionError as e:
-        twitter_api.logger.info("Restarting script due to %s" % e.message)
-        main(twitter_api)
+        logger.info("Restarting script due to %s" % e.message)
+        main()
 
     except TwitterError as e:
-        twitter_api.logger.info("Twitter API errors: %s ----- sleeping for 15 mins" % e.message)
+        logger.info("Twitter API errors: %s ----- sleeping for 15 mins" % e.message)
         time.sleep(60 * 15)
-        main(twitter_api)
+        main()
 
     # db_connection.apply_field_to_all(field="newest_id", value=None, collection=DB.MP_COLLECTION)
     # db_connection.apply_field_to_all(field="oldest_id", value=None, collection=DB.MP_COLLECTION)
