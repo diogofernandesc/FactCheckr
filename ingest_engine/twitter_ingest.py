@@ -405,33 +405,48 @@ class Twitter(object):
 
 
 def main():
-    db_connection = DBConnection()
-    twitter_api = Twitter(os.environ.get(CREDS.TWITTER_KEY),
-                          os.environ.get(CREDS.TWITTER_SECRET),
-                          os.environ.get(CREDS.TWITTER_TOKEN),
-                          os.environ.get(CREDS.TWITTER_TOKEN_SECRET),
-                          db_connection)
+    try:
 
-    if "trends" in sys.argv:
-        globally = "global" in sys.argv
-        is_uk = "UK" in sys.argv
+        db_connection = DBConnection()
+        twitter_api = Twitter(os.environ.get(CREDS.TWITTER_KEY),
+                              os.environ.get(CREDS.TWITTER_SECRET),
+                              os.environ.get(CREDS.TWITTER_TOKEN),
+                              os.environ.get(CREDS.TWITTER_TOKEN_SECRET),
+                              db_connection)
 
-        location = WOEIDS.UK
-        if not is_uk and len(sys.argv) > 2:  # Check that no location has be inputted
-            location = WOEIDS.USA
+        if "trends" in sys.argv:
+            globally = "global" in sys.argv
+            is_uk = "UK" in sys.argv
 
-        while True:
-            twitter_api.get_trends(location=location, globally=globally)
-            time.sleep(60*60*2)  # Run every 2 hours
+            location = WOEIDS.UK
+            if not is_uk and len(sys.argv) > 2:  # Check that no location has be inputted
+                location = WOEIDS.USA
 
-    elif "tweets" in sys.argv:
-        historic = "historical" in sys.argv
-        while True:
-            twitter_api.update_all_tweets(historic=historic)
-            if historic:
-                break
+            while True:
+                twitter_api.get_trends(location=location, globally=globally)
+                time.sleep(60*60*2)  # Run every 2 hours
 
-            time.sleep(60*60*24)
+        elif "tweets" in sys.argv:
+            historic = "historical" in sys.argv
+            while True:
+                twitter_api.update_all_tweets(historic=historic)
+                if historic:
+                    break
+
+                time.sleep(60*60*24)
+
+    except NewConnectionError as e:
+        logger.info("Restarting script due to %s" % e.message)
+        main()
+
+    except ConnectionError as e:
+        logger.info("Restarting script due to %s" % e.message)
+        main()
+
+    except TwitterError as e:
+        logger.info("Twitter API errors: %s ----- sleeping for 15 mins" % e.message)
+        time.sleep(60 * 15)
+        main()
 
 
 if __name__ == "__main__":
