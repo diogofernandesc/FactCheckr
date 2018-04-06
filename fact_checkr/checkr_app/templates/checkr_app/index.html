@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+{% load static %}
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <title>Material Design Bootstrap</title>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+    <!-- Bootstrap core CSS -->
+    <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
+    <!-- Material Design Bootstrap -->
+    <link href="{% static 'css/mdb.min.css' %}" rel="stylesheet">
+    <!-- Your custom styles (optional) -->
+    <link href="{% static 'css/style.min.cs' %}" rel="stylesheet">
+</head>
+
+<body>
+
+    <!--Main Navigation-->
+    <header>
+
+        <!-- Navbar -->
+        <nav class="navbar fixed-top navbar-expand-lg navbar-light white scrolling-navbar">
+            <div class="container">
+
+                <!-- Brand -->
+                <a class="navbar-brand waves-effect" href="">
+                    <strong class="blue-text">FactCheckr</strong>
+                </a>
+
+                <!-- Collapse -->
+                <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent"
+                    aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Links -->
+                <div class="collapse navbar-collapse" id="navbarSupportedContent">
+
+                    <!-- Left -->
+                    <ul class="navbar-nav mr-auto">
+                        <li class="nav-item active">
+                            <a class="nav-link waves-effect" href="#">Home
+                                <span class="sr-only">(current)</span>
+                            </a>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" id="navbarDropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Browse</a>
+                            <div class="dropdown-menu dropdown-primary" aria-labelledby="navbarDropdownMenuLink">
+                                <a class="dropdown-item" href="#">Tweets</a>
+                                <a class="dropdown-item" href="#">Members of Parliament</a>
+                            </div>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link waves-effect" href="https://mdbootstrap.com/getting-started/" target="_blank">Research</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link waves-effect" href="https://mdbootstrap.com/bootstrap-tutorial/" target="_blank">FAQ</a>
+                        </li>
+                    </ul>
+
+                    <form class="form-inline ml-auto">
+                        <div class="md-form mt-0">
+                            <input class="form-control mr-sm-2" type="text" placeholder="Search for an MP" aria-label="Search">
+                         </div>
+                    </form>
+
+                </div>
+
+            </div>
+        </nav>
+        <!-- Navbar -->
+
+    </header>
+    <!--Main Navigation-->
+
+    <!--Main layout-->
+    <main class="mt-5 pt-5">
+        <div class="container">
+
+            <!--Section: Cards-->
+            <section class="pt-5">
+              {% for tweet in tweet_list %}
+                {% if forloop.first %}
+                <!--Grid row-->
+                    <div class="row mb-4 wow fadeIn">
+                {% endif %}
+                    <div class="col-lg-4 col-md-6 mb-4">
+
+                      <!--Card-->
+                      <div class="card">
+                        <div class="view overlay hm-white-slight">
+                          <div class="card-up blue text-center h2-responsive">
+                            <div class="chip chip-md">
+                              <i class="fa fa-flag align-middle"></i>
+                              Factual score: 95%
+                            </div>
+                          </div>
+                        </div>
+
+                        <div class="card-body">
+                        {{ tweet.html|safe }}
+                        <!-- <blockquote class="twitter-tweet" data-width="550"><p lang="en" dir="ltr">Encouraging news that <a href="https://twitter.com/GenomicsEngland?ref_src=twsrc%5Etfw">@GenomicsEngland</a> is halfway to completing their 100,000 Genomes Project. Anyone interested in a primer should check out the <a href="https://twitter.com/POST_UK?ref_src=twsrc%5Etfw">@POST_UK</a> note <a href="https://t.co/GbuFAVGnm4">https://t.co/GbuFAVGnm4</a> <a href="https://twitter.com/hashtag/genomes100k?src=hash&amp;ref_src=twsrc%5Etfw">#genomes100k</a> <a href="https://t.co/1N2Zm9KyJf">https://t.co/1N2Zm9KyJf</a></p>&mdash; Adam Afriyie (@AdamAfriyie) <a href="https://twitter.com/AdamAfriyie/status/967026769688743936?ref_src=twsrc%5Etfw">February 23, 2018</a></blockquote> -->
+                        <!-- <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script> -->
+
+                        </div>
+                      </div>
+                      <!--/.Card-->
+
+                  </div>
+                {% if forloop.counter|divisibleby:"3" %}
+                    </div>
+                    {% if not forloop.last %}
+                        <div class="row mb-4 wow fadeIn">
+                    {% endif %}
+
+                {% endif %}
+                    <!--Grid column-->
+
+                {% if forloop.last %}
+                    </div>
+                {% endif %}
+              {% endfor %}
+
+
+                <!--<div class="row wow fadeIn">-->
+
+                    <!--&lt;!&ndash;Grid column&ndash;&gt;-->
+                    <!--<div class="col-lg-5 col-xl-4 mb-4">-->
+                        <!--&lt;!&ndash;Featured image&ndash;&gt;-->
+                        <!--<div class="view overlay rounded z-depth-1-half">-->
+                            <!--<div class="view overlay hm-white-slight">-->
+                                <!--<div class="embed-responsive embed-responsive-16by9">-->
+                                    <!--<iframe class="embed-responsive-item" src="https://www.youtube.com/embed/cXTThxoywNQ" allowfullscreen></iframe>-->
+                                <!--</div>-->
+                            <!--</div>-->
+                        <!--</div>-->
+                    <!--</div>-->
+                    <!--&lt;!&ndash;Grid column&ndash;&gt;-->
+
+                    <!--&lt;!&ndash;Grid column&ndash;&gt;-->
+                    <!--<div class="col-lg-7 col-xl-7 ml-xl-4 mb-4">-->
+                        <!--<h3 class="mb-3 font-weight-bold dark-grey-text">-->
+                            <!--<strong>MDB Quick Start</strong>-->
+                        <!--</h3>-->
+                        <!--<p class="grey-text">Get started with MDBootstrap, the world's most popular Material Design framework for building responsive,-->
+                            <!--mobile-first sites.</p>-->
+                        <!--<p>-->
+                            <!--<strong>5 minutes, a few clicks and... done. You will be surprised at how easy it is.</strong>-->
+                        <!--</p>-->
+                        <!--<a href="https://www.youtube.com/watch?v=cXTThxoywNQ" target="_blank" class="btn btn-primary btn-md">Start tutorial-->
+                            <!--<i class="fa fa-play ml-2"></i>-->
+                        <!--</a>-->
+                    <!--</div>-->
+                    <!--&lt;!&ndash;Grid column&ndash;&gt;-->
+
+                <!--</div>-->
+                <!--&lt;!&ndash;Grid row &ndash;&gt;-->
+
+                <!--<hr class="mb-5">-->
+
+                <!--&lt;!&ndash;Grid row&ndash;&gt;-->
+                <!--<div class="row mt-3 wow fadeIn">-->
+
+                    <!--&lt;!&ndash;Grid column&ndash;&gt;-->
+                    <!--<div class="col-lg-5 col-xl-4 mb-4">-->
+                        <!--&lt;!&ndash;Featured image&ndash;&gt;-->
+                        <!--&lt;!&ndash;<div class="view overlay rounded z-depth-1">&ndash;&gt;-->
+                        <!--<blockquote class="twitter-tweet" data-width="550"><p lang="en" dir="ltr">Encouraging news that <a href="https://twitter.com/GenomicsEngland?ref_src=twsrc%5Etfw">@GenomicsEngland</a> is halfway to completing their 100,000 Genomes Project. Anyone interested in a primer should check out the <a href="https://twitter.com/POST_UK?ref_src=twsrc%5Etfw">@POST_UK</a> note <a href="https://t.co/GbuFAVGnm4">https://t.co/GbuFAVGnm4</a> <a href="https://twitter.com/hashtag/genomes100k?src=hash&amp;ref_src=twsrc%5Etfw">#genomes100k</a> <a href="https://t.co/1N2Zm9KyJf">https://t.co/1N2Zm9KyJf</a></p>&mdash; Adam Afriyie (@AdamAfriyie) <a href="https://twitter.com/AdamAfriyie/status/967026769688743936?ref_src=twsrc%5Etfw">February 23, 2018</a></blockquote>-->
+<!--<script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>-->
+
+
+                        <!--&lt;!&ndash;</div>&ndash;&gt;-->
+                    <!--</div>-->
+                    <!--&lt;!&ndash;Grid column&ndash;&gt;-->
+
+                    <!--&lt;!&ndash;&lt;!&ndash;Grid column&ndash;&gt;&ndash;&gt;-->
+                    <!--&lt;!&ndash;<div class="col-lg-7 col-xl-7 ml-xl-4 mb-4">&ndash;&gt;-->
+                        <!--&lt;!&ndash;<h3 class="mb-3 font-weight-bold dark-grey-text">&ndash;&gt;-->
+                            <!--&lt;!&ndash;<strong>Bootstrap Automation</strong>&ndash;&gt;-->
+                        <!--&lt;!&ndash;</h3>&ndash;&gt;-->
+                        <!--&lt;!&ndash;<p class="grey-text">Learn how to create a smart website which learns your user and reacts properly to his behavior.</p>&ndash;&gt;-->
+                        <!--&lt;!&ndash;<a href="https://mdbootstrap.com/automated-app-start/" target="_blank" class="btn btn-primary btn-md">Start tutorial&ndash;&gt;-->
+                            <!--&lt;!&ndash;<i class="fa fa-play ml-2"></i>&ndash;&gt;-->
+                        <!--&lt;!&ndash;</a>&ndash;&gt;-->
+                    <!--&lt;!&ndash;</div>&ndash;&gt;-->
+                    <!--&lt;!&ndash;&lt;!&ndash;Grid column&ndash;&gt;&ndash;&gt;-->
+
+                <!--</div>-->
+                <!--&lt;!&ndash;Grid row&ndash;&gt;-->
+
+                <!--<hr class="mb-5">-->
+
+                <!--&lt;!&ndash;Grid row&ndash;&gt;-->
+                <!--<div class="row wow fadeIn">-->
+
+                    <!--&lt;!&ndash;Grid column&ndash;&gt;-->
+                    <!--<div class="col-lg-5 col-xl-4 mb-4">-->
+                        <!--&lt;!&ndash;Featured image&ndash;&gt;-->
+                        <!--<div class="view overlay rounded z-depth-1">-->
+                            <!--<img src="https://mdbootstrap.com/wp-content/uploads/2018/01/push-fb.jpg" class="img-fluid" alt="">-->
+                            <!--<a href="https://mdbootstrap.com/web-push-start/" target="_blank">-->
+                                <!--<div class="mask"></div>-->
+                            <!--</a>-->
+                        <!--</div>-->
+                    <!--</div>-->
+                    <!--&lt;!&ndash;Grid column&ndash;&gt;-->
+
+                    <!--&lt;!&ndash;Grid column&ndash;&gt;-->
+                    <!--<div class="col-lg-7 col-xl-7 ml-xl-4 mb-4">-->
+                        <!--<h3 class="mb-3 font-weight-bold dark-grey-text">-->
+                            <!--<strong>Web Push notifications</strong>-->
+                        <!--</h3>-->
+                        <!--<p class="grey-text">Push messaging provides a simple and effective way to re-engage with your users and in this tutorial-->
+                            <!--you'll learn how to add push notifications to your web app</p>-->
+                        <!--<a href="https://mdbootstrap.com/web-push-start/" target="_blank" class="btn btn-primary btn-md">Start tutorial-->
+                            <!--<i class="fa fa-play ml-2"></i>-->
+                        <!--</a>-->
+                    <!--</div>-->
+                    <!--&lt;!&ndash;Grid column&ndash;&gt;-->
+
+                <!--</div>-->
+                <!--&lt;!&ndash;Grid row&ndash;&gt;-->
+
+                <hr class="mb-5">
+
+                <!--Pagination-->
+                <nav class="d-flex justify-content-center wow fadeIn">
+                    <ul class="pagination pg-blue">
+
+                        <!--Arrow left-->
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" aria-label="Previous">
+                                <span aria-hidden="true">&laquo;</span>
+                                <span class="sr-only">Previous</span>
+                            </a>
+                        </li>
+
+                        <li class="page-item active">
+                            <a class="page-link" href="#">1
+                                <span class="sr-only">(current)</span>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="#">2</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="#">3</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="#">4</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="#">5</a>
+                        </li>
+
+                        <li class="page-item">
+                            <a class="page-link" href="#" aria-label="Next">
+                                <span aria-hidden="true">&raquo;</span>
+                                <span class="sr-only">Next</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+                <!--Pagination-->
+
+            </section>
+            <!--Section: Cards-->
+
+        </div>
+    </main>
+    <!--Main layout-->
+
+    <!--Footer-->
+    <footer class="page-footer text-center font-small mdb-color darken-2 mt-4 wow fadeIn">
+
+        <!--Call to action-->
+        <div class="pt-4">
+            <a class="btn btn-outline-white" href="https://mdbootstrap.com/getting-started/" target="_blank" role="button">Download MDB
+                <i class="fa fa-download ml-2"></i>
+            </a>
+            <a class="btn btn-outline-white" href="https://mdbootstrap.com/bootstrap-tutorial/" target="_blank" role="button">Start free tutorial
+                <i class="fa fa-graduation-cap ml-2"></i>
+            </a>
+        </div>
+        <!--/.Call to action-->
+
+        <hr class="my-4">
+
+        <!-- Social icons -->
+        <div class="pb-4">
+            <a href="https://www.facebook.com/mdbootstrap" target="_blank">
+                <i class="fa fa-facebook mr-3"></i>
+            </a>
+
+            <a href="https://twitter.com/MDBootstrap" target="_blank">
+                <i class="fa fa-twitter mr-3"></i>
+            </a>
+
+            <a href="https://www.youtube.com/watch?v=7MUISDJ5ZZ4" target="_blank">
+                <i class="fa fa-youtube mr-3"></i>
+            </a>
+
+            <a href="https://plus.google.com/u/0/b/107863090883699620484" target="_blank">
+                <i class="fa fa-google-plus mr-3"></i>
+            </a>
+
+            <a href="https://dribbble.com/mdbootstrap" target="_blank">
+                <i class="fa fa-dribbble mr-3"></i>
+            </a>
+
+            <a href="https://pinterest.com/mdbootstrap" target="_blank">
+                <i class="fa fa-pinterest mr-3"></i>
+            </a>
+
+            <a href="https://github.com/mdbootstrap/bootstrap-material-design" target="_blank">
+                <i class="fa fa-github mr-3"></i>
+            </a>
+
+            <a href="http://codepen.io/mdbootstrap/" target="_blank">
+                <i class="fa fa-codepen mr-3"></i>
+            </a>
+        </div>
+
+    </footer>
+    <!--/.Footer-->
+
+    <!-- SCRIPTS -->
+    <!-- JQuery -->
+    <script type="text/javascript" src="{% static 'js/jquery-3.2.1.min.js' %}"></script>
+    <!-- Bootstrap tooltips -->
+    <script type="text/javascript" src="{% static 'js/popper.min.js' %}"></script>
+    <!-- Bootstrap core JavaScript -->
+    <script type="text/javascript" src="{% static 'js/bootstrap.min.js' %}"></script>
+    <!-- MDB core JavaScript -->
+    <script type="text/javascript" src="{% static 'js/mdb.min.js' %}"></script>
+    <!-- Initializations -->
+    <script type="text/javascript">
+        // Animations initialization
+        new WOW().init();
+    </script>
+</body>
+
+</html>

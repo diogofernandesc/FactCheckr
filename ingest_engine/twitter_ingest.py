@@ -37,6 +37,27 @@ class Twitter(object):
             sleep_on_rate_limit=True
         )
 
+    def process_embeds(self):
+        tweet_list = self.db_connection.find_document(collection=DB.TWEET_COLLECTION,
+                                                   filter={"html": {"$exists": False}},
+                                                   projection={"twitter_handle": 1, "retweet_count": 1})
+        for tweet in tweet_list:
+            self.get_embed(status_id=tweet["_id"])
+
+        tweet_list.close()
+
+    def print_embed(self, status_id):
+        tweet_list = self.db_connection.find_document(collection=DB.TWEET_COLLECTION,
+                                                      filter={"html": {"$exists": True}},
+                                                      projection={"twitter_handle": 1, "retweet_count": 1, "html":1})
+
+        print tweet_list[0]['html']
+
+    def get_embed(self, status_id):
+        html = self.api.GetStatusOembed(status_id=status_id)['html']
+        self.db_connection.update_tweet(tweet_id=status_id, update={"html": html})
+        return html
+
     def get_trends(self, location=WOEIDS.UK, globally=False):
         """
         Collect trends based on Location given by woeid: http://woeid.rosselliot.co.nz/lookup
@@ -99,6 +120,14 @@ class Twitter(object):
 
         if MP.NEWEST_ID in mp_doc:
             newest_id = mp_doc[MP.NEWEST_ID]
+
+        tweets = self.api.GetUserTimeline(user_id=747807250819981312,
+                                          count=200,
+                                          exclude_replies=False,
+                                          include_rts=True,
+                                          trim_user=True,
+                                          )
+        print tweets
 
         # Only collect tweets while the amount collected is less than the available for that MP
         while tweets_collected < tweet_count:
@@ -265,6 +294,8 @@ class Twitter(object):
         tweets_available = True
         old_tweets = []
 
+
+
         while tweets_available:
             try:
                 # if oldest_id or newest_id:
@@ -276,7 +307,6 @@ class Twitter(object):
                                                       max_id=oldest_id,
                                                       trim_user=True,
                                                       )
-                    print tweets
                 else:
                     tweets = self.api.GetUserTimeline(user_id=user_id,
                                                       count=200,
