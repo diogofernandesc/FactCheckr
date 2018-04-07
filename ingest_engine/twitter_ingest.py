@@ -121,23 +121,29 @@ class Twitter(object):
         if MP.NEWEST_ID in mp_doc:
             newest_id = mp_doc[MP.NEWEST_ID]
 
-        tweets = self.api.GetUserTimeline(user_id=747807250819981312,
-                                          count=200,
-                                          exclude_replies=False,
-                                          include_rts=True,
-                                          trim_user=True,
-                                          )
-        print tweets
-
+        raw_tweets = self.api.GetUserTimeline(user_id=user_id,
+                                              count=200,
+                                              exclude_replies=False,
+                                              include_rts=True,
+                                              since_id=newest_id,
+                                              )
         # Only collect tweets while the amount collected is less than the available for that MP
-        while tweets_collected < tweet_count:
-            raw_tweets = self.api.GetUserTimeline(user_id=user_id,
-                                                  count=200,
-                                                  exclude_replies=False,
-                                                  include_rts=True,
-                                                  since_id=newest_id,
-                                                  max_id=oldest_id,
-                                                  )
+        while tweets_collected < tweet_count or len(raw_tweets) > 1 or not newest_id:
+            if historic:
+                raw_tweets = self.api.GetUserTimeline(user_id=user_id,
+                                                      count=200,
+                                                      exclude_replies=False,
+                                                      include_rts=True,
+                                                      max_id=oldest_id,
+                                                      )
+            else:
+                raw_tweets = self.api.GetUserTimeline(user_id=user_id,
+                                                      count=200,
+                                                      exclude_replies=False,
+                                                      include_rts=True,
+                                                      since_id=newest_id,
+                                                      )
+            raw_tweets = raw_tweets[::-1]
 
             if not raw_tweets or len(raw_tweets) == 1:  # Break if API limit reached
                 break
