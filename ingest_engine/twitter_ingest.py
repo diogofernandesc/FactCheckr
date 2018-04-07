@@ -402,7 +402,7 @@ class Twitter(object):
             self.get_tweets(mp_doc=mp, historic=historic)
 
         mp_list.close()
-
+	self.logger.info("Tweet ingest complete")
 
 def main():
     db_connection = DBConnection()
