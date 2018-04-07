@@ -6,8 +6,20 @@ from djangotoolbox.fields import ListField
 
 
 class MemberParliament(models.Model):
+    id = models.BigIntegerField(primary_key=True)
+    twitter_handle = models.CharField(max_length=200)
+    description = models.TextField()
+    followers_count = models.IntegerField()
+    party = models.CharField(max_length=200)
+    constituency = models.CharField(max_length=200)
+    tweet_count = models.IntegerField()
     name = models.CharField(max_length=200)
+    newest_id = models.IntegerField(null=True)
+    oldest_id = models.IntegerField()
+    tweets_collected = models.IntegerField()
 
+    class MongoMeta:
+        db_table = "mp_data"
 
 class Tweet(models.Model):
     id = models.BigIntegerField(primary_key=True)

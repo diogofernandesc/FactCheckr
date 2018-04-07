@@ -50,8 +50,8 @@
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" id="navbarDropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Browse</a>
                             <div class="dropdown-menu dropdown-primary" aria-labelledby="navbarDropdownMenuLink">
-                                <a class="dropdown-item" href="#">Tweets</a>
-                                <a class="dropdown-item" href="#">Members of Parliament</a>
+                                <a class="dropdown-item" href="{% url 'checkr_app:index' %}">Tweets</a>
+                                <a class="dropdown-item" href="{% url 'checkr_app:view_mps' %}">Members of Parliament</a>
                             </div>
                         </li>
                         <li class="nav-item">
@@ -64,8 +64,8 @@
 
                     <form class="form-inline ml-auto">
                         <div class="md-form mt-0">
-                            <input class="form-control mr-sm-2" type="text" placeholder="Search for an MP" aria-label="Search">
-                         </div>
+                            <input class="form-control mr-sm-2" type="text" name="mp_search" placeholder="Search for an MP" aria-label="Search">
+                        </div>
                     </form>
 
                 </div>
@@ -81,8 +81,58 @@
     <main class="mt-5 pt-5">
         <div class="container">
 
+            {% if mp %}
+                <!--Card-->
+                <div class="card testimonial-card">
+                    {% if mp.party == "Labour" %}
+                        <div class="card-up red lighten-2">
+                    {% elif mp.party == "Conservative" %}
+                        <div class="card-up blue lighten-2">
+                    {% elif mp.party == "Liberal Democrat" %}
+                        <div class="card-up yellow lighten-2">
+                    {% elif mp.party == "Democratic Unionist Party" %}
+                        <div class="card-up blue lighten-3">
+                    {% elif mp.party == "Green Party" %}
+                        <div class="card-up green lighten-3">
+                    {% elif mp.party == "Plaid Cymru" %}
+                        <div class="card-up green lighten-3">
+                    {% elif mp.party == "Scottish National Party" %}
+                        <div class="card-up yellow lighten-3">
+                    {% elif mp.party == "Sinn Fein" %}
+                        <div class="card-up green lighten-3">
+                    {% endif %}
+                    <!--Bacground color-->
+
+                        <h3 style="text-align: center; padding: 10px; color: white">{{ mp.party }}</h3>
+                    </div>
+
+                    <!--Avatar-->
+                    <div class="avatar mx-auto white"><img src="https://avatars.io/twitter/{{ mp.twitter_handle }}" class="rounded-circle">
+                    </div>
+                    <div class="card-body">
+                        <!--Title-->
+                        <!--<a class="btn-floating btn-action ml-auto mr-4 blue pull-right"><i class="fa fa-chevron-right pl-1"></i></a>-->
+                        <h4 class="card-title">{{ mp.name }}</h4>
+
+                        <hr>
+                        <!--Text-->
+                        <a href="https:twitter.com/{{mp.twitter_handle}}" target="_blank"><i class="fa fa-twitter fa-fw"></i>{{ mp.twitter_handle }}</a>
+                        <p class="font-small grey-dark-text mb-0"><i class="fa fa-home" aria-hidden="true"></i> Constituency: {{mp.constituency}} </p>
+                        <p class="font-small grey-dark-text mb-0"><i class="fa fa-child" aria-hidden="true"></i> Follower count: {{mp.followers_count}} </p>
+                        <p class="font-small grey-dark-text mb-0"><i class="fa fa-flag" aria-hidden="true"></i> Average factual score: 95% </p>
+                        <br>
+                        <!--<button type="button" class="btn btn-outline-primary btn-rounded waves-effect">View fact-checked tweets</button>-->
+                        <!--<a class="link-text"><h5>View fact-checked tweets <i class="fa fa-chevron-right" style="color: deepskyblue"></i></h5></a>-->
+                    </div>
+
+                </div>
+                <!--/.Card-->
+                <hr class="mb-0">
+              {% endif %}
+
             <!--Section: Cards-->
-            <section class="pt-5">
+            <section class="pt-3">
+            {% if tweet_list %}
               {% for tweet in tweet_list %}
                 {% if forloop.first %}
                 <!--Grid row-->
@@ -125,105 +175,77 @@
                 {% endif %}
               {% endfor %}
 
+            {% elif mp_list %}
+                {% for mp in mp_list %}
+                  {% if forloop.first %}
+                  <!--Grid row-->
+                <div class="row mb-4 wow fadeIn">
 
-                <!--<div class="row wow fadeIn">-->
+                  {% endif %}
+                      <div class="col-xs-6 col-sm-4 col-md-4 mb-6">
 
-                    <!--&lt;!&ndash;Grid column&ndash;&gt;-->
-                    <!--<div class="col-lg-5 col-xl-4 mb-4">-->
-                        <!--&lt;!&ndash;Featured image&ndash;&gt;-->
-                        <!--<div class="view overlay rounded z-depth-1-half">-->
-                            <!--<div class="view overlay hm-white-slight">-->
-                                <!--<div class="embed-responsive embed-responsive-16by9">-->
-                                    <!--<iframe class="embed-responsive-item" src="https://www.youtube.com/embed/cXTThxoywNQ" allowfullscreen></iframe>-->
-                                <!--</div>-->
-                            <!--</div>-->
-                        <!--</div>-->
-                    <!--</div>-->
-                    <!--&lt;!&ndash;Grid column&ndash;&gt;-->
+                        <!--Card-->
+                        <div class="card testimonial-card">
+                            {% if mp.party == "Labour" %}
+                                <div class="card-up red lighten-2">
+                            {% elif mp.party == "Conservative" %}
+                                <div class="card-up blue lighten-2">
+                            {% elif mp.party == "Liberal Democrat" %}
+                                <div class="card-up yellow lighten-2">
+                            {% elif mp.party == "Democratic Unionist Party" %}
+                                <div class="card-up blue lighten-3">
+                            {% elif mp.party == "Green Party" %}
+                                <div class="card-up green lighten-3">
+                            {% elif mp.party == "Plaid Cymru" %}
+                                <div class="card-up green lighten-3">
+                            {% elif mp.party == "Scottish National Party" %}
+                                <div class="card-up yellow lighten-3">
+                            {% elif mp.party == "Sinn Fein" %}
+                                <div class="card-up green lighten-3">
+                            {% endif %}
+                            <!--Bacground color-->
 
-                    <!--&lt;!&ndash;Grid column&ndash;&gt;-->
-                    <!--<div class="col-lg-7 col-xl-7 ml-xl-4 mb-4">-->
-                        <!--<h3 class="mb-3 font-weight-bold dark-grey-text">-->
-                            <!--<strong>MDB Quick Start</strong>-->
-                        <!--</h3>-->
-                        <!--<p class="grey-text">Get started with MDBootstrap, the world's most popular Material Design framework for building responsive,-->
-                            <!--mobile-first sites.</p>-->
-                        <!--<p>-->
-                            <!--<strong>5 minutes, a few clicks and... done. You will be surprised at how easy it is.</strong>-->
-                        <!--</p>-->
-                        <!--<a href="https://www.youtube.com/watch?v=cXTThxoywNQ" target="_blank" class="btn btn-primary btn-md">Start tutorial-->
-                            <!--<i class="fa fa-play ml-2"></i>-->
-                        <!--</a>-->
-                    <!--</div>-->
-                    <!--&lt;!&ndash;Grid column&ndash;&gt;-->
+                                <h3 style="text-align: center; padding: 10px; color: white">{{ mp.party }}</h3>
+                            </div>
 
-                <!--</div>-->
-                <!--&lt;!&ndash;Grid row &ndash;&gt;-->
+                            <!--Avatar-->
+                            <div class="avatar mx-auto white"><img src="https://avatars.io/twitter/{{ mp.twitter_handle }}" class="rounded-circle">
+                            </div>
+                            <div class="card-body">
+                                <!--Title-->
+                                <!--<a class="btn-floating btn-action ml-auto mr-4 blue pull-right"><i class="fa fa-chevron-right pl-1"></i></a>-->
+                                <h4 class="card-title">{{ mp.name }}</h4>
 
-                <!--<hr class="mb-5">-->
+                                <hr>
+                                <!--Text-->
+                                <a href="https:twitter.com/{{mp.twitter_handle}}" target="_blank"><i class="fa fa-twitter fa-fw"></i>{{ mp.twitter_handle }}</a>
+                                <p class="font-small grey-dark-text mb-0"><i class="fa fa-home" aria-hidden="true"></i> Constituency: {{mp.constituency}} </p>
+                                <p class="font-small grey-dark-text mb-0"><i class="fa fa-child" aria-hidden="true"></i> Follower count: {{mp.followers_count}} </p>
+                                <p class="font-small grey-dark-text mb-0"><i class="fa fa-flag" aria-hidden="true"></i> Average factual score: 95% </p>
+                                <br>
+                                <a class="btn btn-outline-primary btn-rounded waves-effect" href="{% url 'checkr_app:view_mp' mp.id %}">View fact-checked tweets</a>
+                                <!--<button type="button" class="btn btn-outline-primary btn-rounded waves-effect">View fact-checked tweets</button>-->
+                                <!--<a class="link-text"><h5>View fact-checked tweets <i class="fa fa-chevron-right" style="color: deepskyblue"></i></h5></a>-->
+                            </div>
 
-                <!--&lt;!&ndash;Grid row&ndash;&gt;-->
-                <!--<div class="row mt-3 wow fadeIn">-->
+                        </div>
+                        <!--/.Card-->
 
-                    <!--&lt;!&ndash;Grid column&ndash;&gt;-->
-                    <!--<div class="col-lg-5 col-xl-4 mb-4">-->
-                        <!--&lt;!&ndash;Featured image&ndash;&gt;-->
-                        <!--&lt;!&ndash;<div class="view overlay rounded z-depth-1">&ndash;&gt;-->
-                        <!--<blockquote class="twitter-tweet" data-width="550"><p lang="en" dir="ltr">Encouraging news that <a href="https://twitter.com/GenomicsEngland?ref_src=twsrc%5Etfw">@GenomicsEngland</a> is halfway to completing their 100,000 Genomes Project. Anyone interested in a primer should check out the <a href="https://twitter.com/POST_UK?ref_src=twsrc%5Etfw">@POST_UK</a> note <a href="https://t.co/GbuFAVGnm4">https://t.co/GbuFAVGnm4</a> <a href="https://twitter.com/hashtag/genomes100k?src=hash&amp;ref_src=twsrc%5Etfw">#genomes100k</a> <a href="https://t.co/1N2Zm9KyJf">https://t.co/1N2Zm9KyJf</a></p>&mdash; Adam Afriyie (@AdamAfriyie) <a href="https://twitter.com/AdamAfriyie/status/967026769688743936?ref_src=twsrc%5Etfw">February 23, 2018</a></blockquote>-->
-<!--<script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>-->
+                    </div>
+                  {% if forloop.counter|divisibleby:"3" %}
+                      </div>
+                      {% if not forloop.last %}
+                          <div class="row mb-4 wow fadeIn">
+                      {% endif %}
 
+                  {% endif %}
 
-                        <!--&lt;!&ndash;</div>&ndash;&gt;-->
-                    <!--</div>-->
-                    <!--&lt;!&ndash;Grid column&ndash;&gt;-->
+                  {% if forloop.last %}
+                      </div>
+                  {% endif %}
+                {% endfor %}
 
-                    <!--&lt;!&ndash;&lt;!&ndash;Grid column&ndash;&gt;&ndash;&gt;-->
-                    <!--&lt;!&ndash;<div class="col-lg-7 col-xl-7 ml-xl-4 mb-4">&ndash;&gt;-->
-                        <!--&lt;!&ndash;<h3 class="mb-3 font-weight-bold dark-grey-text">&ndash;&gt;-->
-                            <!--&lt;!&ndash;<strong>Bootstrap Automation</strong>&ndash;&gt;-->
-                        <!--&lt;!&ndash;</h3>&ndash;&gt;-->
-                        <!--&lt;!&ndash;<p class="grey-text">Learn how to create a smart website which learns your user and reacts properly to his behavior.</p>&ndash;&gt;-->
-                        <!--&lt;!&ndash;<a href="https://mdbootstrap.com/automated-app-start/" target="_blank" class="btn btn-primary btn-md">Start tutorial&ndash;&gt;-->
-                            <!--&lt;!&ndash;<i class="fa fa-play ml-2"></i>&ndash;&gt;-->
-                        <!--&lt;!&ndash;</a>&ndash;&gt;-->
-                    <!--&lt;!&ndash;</div>&ndash;&gt;-->
-                    <!--&lt;!&ndash;&lt;!&ndash;Grid column&ndash;&gt;&ndash;&gt;-->
-
-                <!--</div>-->
-                <!--&lt;!&ndash;Grid row&ndash;&gt;-->
-
-                <!--<hr class="mb-5">-->
-
-                <!--&lt;!&ndash;Grid row&ndash;&gt;-->
-                <!--<div class="row wow fadeIn">-->
-
-                    <!--&lt;!&ndash;Grid column&ndash;&gt;-->
-                    <!--<div class="col-lg-5 col-xl-4 mb-4">-->
-                        <!--&lt;!&ndash;Featured image&ndash;&gt;-->
-                        <!--<div class="view overlay rounded z-depth-1">-->
-                            <!--<img src="https://mdbootstrap.com/wp-content/uploads/2018/01/push-fb.jpg" class="img-fluid" alt="">-->
-                            <!--<a href="https://mdbootstrap.com/web-push-start/" target="_blank">-->
-                                <!--<div class="mask"></div>-->
-                            <!--</a>-->
-                        <!--</div>-->
-                    <!--</div>-->
-                    <!--&lt;!&ndash;Grid column&ndash;&gt;-->
-
-                    <!--&lt;!&ndash;Grid column&ndash;&gt;-->
-                    <!--<div class="col-lg-7 col-xl-7 ml-xl-4 mb-4">-->
-                        <!--<h3 class="mb-3 font-weight-bold dark-grey-text">-->
-                            <!--<strong>Web Push notifications</strong>-->
-                        <!--</h3>-->
-                        <!--<p class="grey-text">Push messaging provides a simple and effective way to re-engage with your users and in this tutorial-->
-                            <!--you'll learn how to add push notifications to your web app</p>-->
-                        <!--<a href="https://mdbootstrap.com/web-push-start/" target="_blank" class="btn btn-primary btn-md">Start tutorial-->
-                            <!--<i class="fa fa-play ml-2"></i>-->
-                        <!--</a>-->
-                    <!--</div>-->
-                    <!--&lt;!&ndash;Grid column&ndash;&gt;-->
-
-                <!--</div>-->
-                <!--&lt;!&ndash;Grid row&ndash;&gt;-->
+            {% endif %}
 
                 <hr class="mb-5">
 
