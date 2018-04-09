@@ -116,6 +116,7 @@ class Twitter(object):
         twitter_handle = mp_doc[MP.TWITTER_HANDLE]
         tweet_count = mp_doc[MP.TWEET_COUNT]
         tweets_collected = mp_doc[MP.TWEETS_COLLECTED]
+        tracked_ids = []
         if MP.OLDEST_ID in mp_doc:
             oldest_id = mp_doc[MP.OLDEST_ID]
 
@@ -149,11 +150,12 @@ class Twitter(object):
             raw_tweets = sorted(raw_tweets, key=lambda tweet: (tweet.created_at_in_seconds))
             # raw_tweets = raw_tweets[::-1]
 
-            if not raw_tweets or len(raw_tweets) == 1 or len(raw_tweets) == 2:  # Break if API limit reached
+            if not raw_tweets or len(raw_tweets) == 1 or len(raw_tweets) == 2 or raw_tweets[0].id in tracked_ids:  # Break if API limit reached
                 break
 
             tweets_collected += len(raw_tweets)
             for raw_tweet in raw_tweets:
+                tracked_ids.append(raw_tweet.id)
                 retweet = False
 
                 # Tweet count
@@ -221,11 +223,13 @@ class Twitter(object):
                 else:
                     tweet_list.append(formatted_tweet)
 
-        if tweet_list:
-            self.db_connection.insert_tweets(tweet_list)
+            if tweet_list:
+                self.db_connection.insert_tweets(tweet_list)
+                tweet_list = []
 
-        if retweet_list:
-            self.db_connection.insert_tweets(tweet_list=retweet_list, retweets=True)
+            if retweet_list:
+                self.db_connection.insert_tweets(tweet_list=retweet_list, retweets=True)
+                retweet_list = []
 
         if historic:
             self.db_connection.update_mp(user_id=user_id, update={MP.OLDEST_ID: oldest_id,
