@@ -5,6 +5,7 @@ sys.path.append("..")
 from requests import ConnectionError
 from watson_developer_cloud import NaturalLanguageUnderstandingV1
 from watson_developer_cloud.natural_language_understanding_v1 import Features, KeywordsOptions, EntitiesOptions, RelationsOptions
+from watson_developer_cloud.watson_service import WatsonApiException
 import os
 from db_engine import DBConnection
 from cons import DB
@@ -103,23 +104,27 @@ class EntityExtractor(TweetHandler):
         for tweet in tweets:
             keywords = []
             entities = []
-            response = self.nlu.analyze(text=tweet[1], features=Features(keywords=KeywordsOptions(),
-                                                                         entities=EntitiesOptions()))
+            try:
+                response = self.nlu.analyze(text=tweet[1], features=Features(keywords=KeywordsOptions(),
+                                                                             entities=EntitiesOptions()))
+            except WatsonApiException:
+                response = None
 
             rosette_entities = self.analyse_rosette(tweet=tweet[1])
             entities = entities + rosette_entities
 
-            for keyword in response['keywords']:
-                if " " in keyword['text'] and keyword['relevance'] < 0.4:
-                    keywords = keywords + (keyword['text'].split())
-                else:
-                    keywords.append(keyword['text'])
+            if response:
+                for keyword in response['keywords']:
+                    if " " in keyword['text'] and keyword['relevance'] < 0.4:
+                        keywords = keywords + (keyword['text'].split())
+                    else:
+                        keywords.append(keyword['text'])
 
-            for entity in response['entities']:
-                entities.append({
-                    "entity": entity['text'],
-                    "type": entity["type"]
-                })
+                for entity in response['entities']:
+                    entities.append({
+                        "entity": entity['text'],
+                        "type": entity["type"]
+                    })
 
             result_tweet = self.db_connection.find_and_update(collection=collection,
                                                               query={"_id": tweet[0]},
@@ -134,7 +139,7 @@ class EntityExtractor(TweetHandler):
 def main():
     while True:
         # 1514764800 = 1st of January 2018 00:00:00
-        # ext.analyse(since_epoch=1514764800)
+        ext.analyse(since_epoch=1514764800)
         ext.analyse(since_epoch=1514764800, retweets=True)
 
         logger.info("Now sleeping entity/keyword extractor")
