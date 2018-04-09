@@ -1,3 +1,6 @@
+import logging
+
+from requests import ConnectionError
 from watson_developer_cloud import NaturalLanguageUnderstandingV1
 from watson_developer_cloud.natural_language_understanding_v1 import Features, KeywordsOptions, EntitiesOptions, RelationsOptions
 import os
@@ -9,6 +12,9 @@ from nltk.corpus import stopwords
 import nltk
 import time
 
+logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
+logger = logging.getLogger(__name__)
+
 
 class EntityExtractor(TweetHandler):
     def __init__(self):
@@ -16,7 +22,7 @@ class EntityExtractor(TweetHandler):
         self.nlu = NaturalLanguageUnderstandingV1(version='2017-02-27',
                                                   username=os.getenv('IBM_USER'), password=os.getenv('IBM_PASS'))
 
-    def get_clean(self, filter={}, limit=1000, tweet=None):
+    def get_clean(self, filter={}, limit=4000, tweet=None, collection=DB.TWEET_COLLECTION):
         """
         Override
         Get tweets for specific MP and clean tweet
@@ -25,7 +31,7 @@ class EntityExtractor(TweetHandler):
         """
         clean_tweets = []
         if not tweet:
-            tweets = self.db_connection.find_document(collection=DB.TWEET_COLLECTION,
+            tweets = self.db_connection.find_document(collection=collection,
                                                       filter=filter,
                                                       projection={"text": 1},
                                                       limit=limit)
@@ -51,21 +57,33 @@ class EntityExtractor(TweetHandler):
 
         return clean_tweets
 
-    def analyse(self, tweets):
+    def analyse(self, since_epoch, retweets=False):
         """
+        :param since_epoch: timestamp from which to collect tweets
+        :param retweets: Analyse recent tweets or not, default is no
         Extract keywords and entities from tweets
         :return:
         """
+        collection = DB.TWEET_COLLECTION
+        if retweets:
+            collection = DB.RETWEET_COLLECTION
 
+        # Get tweets that have not been analysed yet
+        tweets = self.get_clean(collection=collection,
+                                filter={"$and": [{"created_at_epoch": {"$gt": since_epoch}},
+                                                 {"$or": [{"keywords": None}, {"entities": None}]}]})
         # Tweets is a list of tuples=(tweet_id, tweet_text)
         for tweet in tweets:
             keywords = []
             entities = []
             response = self.nlu.analyze(text=tweet[1], features=Features(keywords=KeywordsOptions(),
-                                                                     entities=EntitiesOptions(),
-                                                                     relations=RelationsOptions()))
+                                                                         entities=EntitiesOptions(),
+                                                                         relations=RelationsOptions()))
             for keyword in response['keywords']:
-                keywords.append(keyword['text'])
+                if " " in keyword['text']:
+                    keywords.append(keyword['text'].split())
+                else:
+                    keywords.append(keyword['text'])
 
             for entity in response['entities']:
                 entities.append(entity['text'])
@@ -75,17 +93,27 @@ class EntityExtractor(TweetHandler):
                                                               update={"$set": {"keywords": keywords,
                                                                                "entities": entities}})
 
+            print tweet[0]
+
+
+def main():
+    while True:
+        # 1514764800 = 1st of January 2018 00:00:00
+        ext.analyse(since_epoch=1514764800)
+        ext.analyse(since_epoch=1514764800, retweets=True)
+
+        time.sleep(60 * 60 * 26)  # Check every 2 hours
+
 
 if __name__ == "__main__":
     ext = EntityExtractor()
 
-    while True:
-        # Get tweets that have not been analysed yet
-        tweets = ext.get_clean(filter={"$or": [{"keywords": None}, {"entities": None}]})
-        if tweets:
-            ext.analyse(tweets=tweets)
+    try:
+        main()
 
-        time.sleep(60 * 60 * 2)  # Check every 2 hours
+    except ConnectionError as e:
+        logger.info("Restarting script due to %s" % e.message)
+        main()
 
 
 
