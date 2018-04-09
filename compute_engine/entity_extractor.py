@@ -11,6 +11,8 @@ from tweet_handler import TweetHandler
 from nltk.corpus import stopwords
 import nltk
 import time
+import logging
+from rosette.api import API, DocumentParameters, RosetteException
 
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 logger = logging.getLogger(__name__)
@@ -21,6 +23,7 @@ class EntityExtractor(TweetHandler):
         super(EntityExtractor, self).__init__()
         self.nlu = NaturalLanguageUnderstandingV1(version='2017-02-27',
                                                   username=os.getenv('IBM_USER'), password=os.getenv('IBM_PASS'))
+        self.rosette = API(user_key=os.getenv("ROSETTE_API_KEY"))
 
     def get_clean(self, filter={}, limit=4000, tweet=None, collection=DB.TWEET_COLLECTION):
         """
@@ -44,7 +47,6 @@ class EntityExtractor(TweetHandler):
             tweet_text = re.sub(regex_remove, '', tweet["text"]).strip()
             tweet_id = tweet["_id"]
 
-
             stopword_list = []
             stopword_file = open('stopwords.txt', 'r')
             for line in stopword_file:
@@ -56,6 +58,27 @@ class EntityExtractor(TweetHandler):
             clean_tweets.append((tweet_id, tweet_text))
 
         return clean_tweets
+
+
+    def analyse_rosette(self, tweet):
+        params = DocumentParameters()
+        params["content"] = tweet[1]
+        params["genre"] = "social-media"
+
+        extracted_entities = []
+        try:
+            entities = self.rosette.entities(params)
+            for entity in entities['entities']:
+                extracted_entities.append({
+                    "entity": entity['mention'],
+                    "type": entity["type"]
+
+                })
+            return extracted_entities
+
+        except RosetteException as exception:
+            logger.warn("Rossete API exception: %s" % exception)
+
 
     def analyse(self, since_epoch, retweets=False):
         """
@@ -72,13 +95,17 @@ class EntityExtractor(TweetHandler):
         tweets = self.get_clean(collection=collection,
                                 filter={"$and": [{"created_at_epoch": {"$gt": since_epoch}},
                                                  {"$or": [{"keywords": None}, {"entities": None}]}]})
+        
         # Tweets is a list of tuples=(tweet_id, tweet_text)
         for tweet in tweets:
             keywords = []
             entities = []
             response = self.nlu.analyze(text=tweet[1], features=Features(keywords=KeywordsOptions(),
-                                                                         entities=EntitiesOptions(),
-                                                                         relations=RelationsOptions()))
+                                                                         entities=EntitiesOptions()))
+
+            rosette_entities = self.analyse_rosette(tweet=tweet)
+            entities = entities + rosette_entities
+
             for keyword in response['keywords']:
                 if " " in keyword['text']:
                     keywords.append(keyword['text'].split())
@@ -86,7 +113,10 @@ class EntityExtractor(TweetHandler):
                     keywords.append(keyword['text'])
 
             for entity in response['entities']:
-                entities.append(entity['text'])
+                entities.append({
+                    "entity": entity['text'],
+                    "type": entity["type"]
+                })
 
             result_tweet = self.db_connection.find_and_update(collection=DB.TWEET_COLLECTION,
                                                               query={"_id": tweet[0]},
@@ -105,12 +135,11 @@ def main():
         time.sleep(60 * 60 * 26)  # Check every 2 hours
 
 
+
 if __name__ == "__main__":
     ext = EntityExtractor()
-
     try:
         main()
-
     except ConnectionError as e:
         logger.info("Restarting script due to %s" % e.message)
         main()

@@ -119,3 +119,10 @@ class CREDS(object):
     TWITTER_SECRET = "TWITTER_SECRET"
     TWITTER_TOKEN = "TWITTER_TOKEN"
     TWITTER_TOKEN_SECRET = "TWITTER_TOKEN_SECRET"
+
+
+class CROWDFLOWER(object):
+    TWEET_CONTENT = 'tweet_content'
+    ENTITY_LIST = 'entity_list'
+
+
