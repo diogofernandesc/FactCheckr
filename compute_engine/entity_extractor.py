@@ -108,7 +108,7 @@ class EntityExtractor(TweetHandler):
                 response = self.nlu.analyze(text=tweet[1], features=Features(keywords=KeywordsOptions(),
                                                                              entities=EntitiesOptions()))
             except WatsonApiException:
-                response = None
+                response = []
 
             rosette_entities = self.analyse_rosette(tweet=tweet[1])
             entities = entities + rosette_entities
