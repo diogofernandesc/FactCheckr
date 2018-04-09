@@ -94,6 +94,8 @@ class EntityExtractor(TweetHandler):
         tweets = self.get_clean(collection=collection,
                                 filter={"$and": [{"created_at_epoch": {"$gt": since_epoch}},
                                                  {"$or": [{"keywords": None}, {"entities": None}]}]})
+
+        count = 0
         
         # Tweets is a list of tuples=(tweet_id, tweet_text)
         for tweet in tweets:
@@ -121,7 +123,10 @@ class EntityExtractor(TweetHandler):
                                                               query={"_id": tweet[0]},
                                                               update={"$set": {"keywords": keywords,
                                                                                "entities": entities}})
-            
+
+            count += 1
+            if count % 100 == 0:
+                logger.info("Extracted entities and keywords for %s tweets" % count)
 
 
 def main():
@@ -130,6 +135,7 @@ def main():
         # ext.analyse(since_epoch=1514764800)
         ext.analyse(since_epoch=1514764800, retweets=True)
 
+        logger.info("Now sleeping entity/keyword extractor")
         time.sleep(60 * 60 * 26)  # Check every 26 hours (after tweet ingest)
 
 
