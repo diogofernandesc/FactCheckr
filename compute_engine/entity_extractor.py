@@ -59,10 +59,9 @@ class EntityExtractor(TweetHandler):
 
         return clean_tweets
 
-
     def analyse_rosette(self, tweet):
         params = DocumentParameters()
-        params["content"] = tweet[1]
+        params["content"] = tweet
         params["genre"] = "social-media"
 
         extracted_entities = []
@@ -103,12 +102,12 @@ class EntityExtractor(TweetHandler):
             response = self.nlu.analyze(text=tweet[1], features=Features(keywords=KeywordsOptions(),
                                                                          entities=EntitiesOptions()))
 
-            rosette_entities = self.analyse_rosette(tweet=tweet)
+            rosette_entities = self.analyse_rosette(tweet=tweet[1])
             entities = entities + rosette_entities
 
             for keyword in response['keywords']:
-                if " " in keyword['text']:
-                    keywords.append(keyword['text'].split())
+                if " " in keyword['text'] and keyword['relevance'] < 0.4:
+                    keywords = keywords + (keyword['text'].split())
                 else:
                     keywords.append(keyword['text'])
 
@@ -118,22 +117,20 @@ class EntityExtractor(TweetHandler):
                     "type": entity["type"]
                 })
 
-            result_tweet = self.db_connection.find_and_update(collection=DB.TWEET_COLLECTION,
+            result_tweet = self.db_connection.find_and_update(collection=collection,
                                                               query={"_id": tweet[0]},
                                                               update={"$set": {"keywords": keywords,
                                                                                "entities": entities}})
-
             print tweet[0]
 
 
 def main():
     while True:
         # 1514764800 = 1st of January 2018 00:00:00
-        ext.analyse(since_epoch=1514764800)
+        # ext.analyse(since_epoch=1514764800)
         ext.analyse(since_epoch=1514764800, retweets=True)
 
-        time.sleep(60 * 60 * 26)  # Check every 2 hours
-
+        time.sleep(60 * 60 * 26)  # Check every 26 hours (after tweet ingest)
 
 
 if __name__ == "__main__":
