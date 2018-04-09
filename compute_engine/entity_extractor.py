@@ -1,5 +1,7 @@
 import logging
 
+import sys
+sys.path.append("..")
 from requests import ConnectionError
 from watson_developer_cloud import NaturalLanguageUnderstandingV1
 from watson_developer_cloud.natural_language_understanding_v1 import Features, KeywordsOptions, EntitiesOptions, RelationsOptions
