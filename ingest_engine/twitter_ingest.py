@@ -2,6 +2,7 @@ import calendar
 import sys
 
 import re
+from operator import itemgetter
 
 from urllib3.exceptions import NewConnectionError
 
@@ -143,9 +144,12 @@ class Twitter(object):
                                                       include_rts=True,
                                                       since_id=newest_id,
                                                       )
-            raw_tweets = raw_tweets[::-1]
 
-            if not raw_tweets or len(raw_tweets) == 1:  # Break if API limit reached
+            # Sort tweets by oldest first
+            raw_tweets = sorted(raw_tweets, key=lambda tweet: (tweet.created_at_in_seconds))
+            # raw_tweets = raw_tweets[::-1]
+
+            if not raw_tweets or len(raw_tweets) == 1 or len(raw_tweets) == 2:  # Break if API limit reached
                 break
 
             tweets_collected += len(raw_tweets)
@@ -438,7 +442,7 @@ class Twitter(object):
             self.get_tweets(mp_doc=mp, historic=historic)
 
         mp_list.close()
-	self.logger.info("Tweet ingest complete")
+        logger.info("Tweet ingest complete")
 
 def main():
     db_connection = DBConnection()
