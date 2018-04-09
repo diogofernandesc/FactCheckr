@@ -80,6 +80,7 @@ class EntityExtractor(TweetHandler):
 
         except RosetteException as exception:
             logger.warn("Rossete API exception: %s" % exception)
+            return []
 
 
     def analyse(self, since_epoch, retweets=False):
