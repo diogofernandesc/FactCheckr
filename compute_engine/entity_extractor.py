@@ -121,7 +121,7 @@ class EntityExtractor(TweetHandler):
                                                               query={"_id": tweet[0]},
                                                               update={"$set": {"keywords": keywords,
                                                                                "entities": entities}})
-            print tweet[0]
+            
 
 
 def main():
