@@ -117,16 +117,17 @@ class EntityExtractor(TweetHandler):
                     "type": entity["type"]
                 })
 
-            result_tweet = self.db_connection.find_and_update(collection=DB.TWEET_COLLECTION,
+            result_tweet = self.db_connection.find_and_update(collection=collection,
                                                               query={"_id": tweet[0]},
                                                               update={"$set": {"keywords": keywords,
                                                                                "entities": entities}})
+            print tweet[0]
 
 
 def main():
     while True:
         # 1514764800 = 1st of January 2018 00:00:00
-        ext.analyse(since_epoch=1514764800)
+        # ext.analyse(since_epoch=1514764800)
         ext.analyse(since_epoch=1514764800, retweets=True)
 
         time.sleep(60 * 60 * 26)  # Check every 26 hours (after tweet ingest)
