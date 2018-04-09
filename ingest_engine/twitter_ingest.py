@@ -476,18 +476,6 @@ def main():
             if historic:
                 break
 
-<<<<<<< HEAD
-            time.sleep(60*60*24)
-=======
-    except ConnectionError as e:
-        twitter_api.logger.info("Restarting script due to %s" % e.message)
-        main(db_connection, twitter_api)
-        
-    except TwitterError as e:
-        twitter_api.logger.info("Twitter API errors: %s ----- sleeping for 15 mins" % e.message)
-        time.sleep(60*15)
-        main(db_connection, twitter_api)
->>>>>>> crowdflower-setup
 
 
 if __name__ == "__main__":
