@@ -494,7 +494,7 @@ def main():
             month_end = date.month
             month = 1
             day = 2
-            while month != month_end and day != day_end:
+            while month != month_end or day != day_end:
                 twitter_api.get_historic_trends(month=month, day=day)
                 time.sleep(3)
                 day += 1
