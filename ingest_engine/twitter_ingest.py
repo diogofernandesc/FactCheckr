@@ -32,6 +32,7 @@ class Twitter(object):
         self.consumer_secret = consumer_secret
         self.access_token_key = access_token_key
         self.access_token_secret = access_token_secret
+        self.session = requests.session()
         self.api = twitter.Api(
             consumer_key=self.consumer_key,
             consumer_secret=self.consumer_secret,
@@ -64,7 +65,8 @@ class Twitter(object):
     def get_historic_trends(self, month, day):
         trends_to_insert = []
         link = "https://trendogate.com/placebydate/23424975/2018-%s-%s" % (month, day)
-        response = requests.get(link)
+        
+        response = self.session.get(link)
         if response.status_code == 200:
             page = response.content
         else:
