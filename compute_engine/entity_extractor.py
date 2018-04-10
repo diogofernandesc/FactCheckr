@@ -140,7 +140,7 @@ class EntityExtractor(TweetHandler):
 def main():
     while True:
         # 1514764800 = 1st of January 2018 00:00:00
-        ext.analyse(since_epoch=1514764800)
+        ext.analyse(since_epoch=1521988461)
         ext.analyse(since_epoch=1514764800, retweets=True)
 
         logger.info("Now sleeping entity/keyword extractor")
