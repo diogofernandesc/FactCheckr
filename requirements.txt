@@ -7,3 +7,4 @@ nltk
 mwviews
 watson_developer_cloud
 rosette_api
+gensim

@@ -16,6 +16,7 @@ class NEWS_ARTICLE(object):
     SOURCE = "source"
     PUBLISH_DATE = "published_at"
     CATEGORY = "category"
+    TIMESTAMP = "timestamp"
 
 
 class NEWS_SOURCE(object):

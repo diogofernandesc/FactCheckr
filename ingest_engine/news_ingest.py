@@ -1,6 +1,7 @@
+import calendar
 import sys
 sys.path.append("..")
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import time
 import re
 from newsapi import NewsApiClient
@@ -40,6 +41,17 @@ class NewsClient(object):
                 })
 
         self.db_connection.bulk_insert(data=sources_to_insert, collection=DB.SOURCES_COLLECTION)
+
+    def get_timestamps(self):
+        news = self.db_connection.find_document(collection=DB.NEWS_ARTICLES,
+                                                filter={},
+                                                projection={NEWS_ARTICLE.PUBLISH_DATE})
+
+        for piece in news:
+            timestamp = calendar.timegm(piece['published_at'].timetuple())
+            result_piece = self.db_connection.find_and_update(collection=DB.NEWS_ARTICLES,
+                                                              query={"_id": piece["_id"]},
+                                                              update={"$set": {"timestamp": timestamp}})
 
     def get_articles(self, query=None, since=None):
         """
@@ -92,6 +104,7 @@ class NewsClient(object):
                             NEWS_ARTICLE.URL: article["url"],
                             NEWS_ARTICLE.SOURCE: article["source"]["name"],
                             NEWS_ARTICLE.PUBLISH_DATE: date,
+                            NEWS_ARTICLE.TIMESTAMP: calendar.timegm(date.timetuple())
                         })
 
             page_no += 1
