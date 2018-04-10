@@ -82,10 +82,10 @@ class Twitter(object):
                     TWITTER_TREND.TIMESTAMP_EPOCH: calendar.timegm(date.timetuple()),
                     TWITTER_TREND.LOCATION: "United Kingdom",
                 }
-                print trend_doc
                 trends_to_insert.append(trend_doc)
 
         self.db_connection.bulk_insert(data=trends_to_insert, collection=DB.TWITTER_TRENDS)
+        logger.info("Inserted twitter trends for: %s/%s/2018" % (day, month))
 
 
     def get_trends(self, location=WOEIDS.UK, globally=False):
