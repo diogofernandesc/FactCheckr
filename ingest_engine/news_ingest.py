@@ -63,7 +63,7 @@ class NewsClient(object):
         batch_size = 300
         article_count = 0
         page_no = 1
-        stop_words = re.compile("|".join(["sport"]))  # words, categories etc that are not important to collect
+        stop_words = re.compile("|".join(["sport", "entertainment"]))  # words, categories etc that are not important to collect
 
         sort_by = NEWS_API_PARAMS.SORT_BY_NEWEST
         sources = list(self.db_connection.find_document(collection=DB.SOURCES_COLLECTION,
