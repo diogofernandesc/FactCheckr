@@ -16,7 +16,7 @@ logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 class NewsClient(object):
     def __init__(self):
         self.logger = logging.getLogger(__name__)
-        self.api = NewsApiClient(api_key=os.getenv("NEWS_API_KEY"))
+        self.api = NewsApiClient(api_key="419a08e8024d44ae8f5fd4e3ac9de131")
         self.db_connection = DBConnection()
 
     def get_sources(self):
@@ -71,17 +71,20 @@ class NewsClient(object):
                                                         projection={NEWS_SOURCE.NEWS_API_ID: 1, "_id": 0}))
 
         sources = map(lambda x: x[NEWS_SOURCE.NEWS_API_ID], sources)
+        sources = ','.join(sources)
+
         if query:  # Sort by relevancy instead of newest if query placed
             sort_by = NEWS_API_PARAMS.SORT_BY_RELEVANCY
 
         if not since:
             since = datetime.now() - timedelta(days=30)
 
+        count = 0
         while True:
             news_payload = self.api.get_everything(q=query, language='en', sources=sources,
                                                    from_parameter=since, sort_by=sort_by, page=page_no,
                                                    page_size=NEWS_API_PARAMS.PAGE_SIZE)
-
+            count += 1
             total_articles = None
             if "totalResults" in news_payload:
                 total_articles = news_payload["totalResults"]
@@ -119,6 +122,11 @@ class NewsClient(object):
 
             page_no += 1
 
+            if count >= 240:
+                self.logger.info("Stopping news collection due to API limits")
+                self.logger.info("last timestamp: %s" % calendar.timegm(date.timetuple()))
+                break
+
             # if raw_articles:
             #     self.db_connection.bulk_insert(data=articles_to_insert, collection=DB.NEWS_ARTICLES)
             #     articles_to_insert = []
@@ -134,13 +142,14 @@ if __name__ == "__main__":
     while True:
         since = datetime.now() - timedelta(hours=24)
         if "historic" in sys.argv:
-            since = datetime(year=2018, month=1, day=1)
+            # since = datetime(year=2018, month=1, day=1)
+            since = '2018-01-01' # year-month-day
 
-        client.logger.info("Getting news articles since month: %s, day: %s, hour: %s" % (since.month,
-                                                                                         since.day,
-                                                                                         since.hour))
+        client.logger.info("Getting news articles")
         client.get_articles(since=since)
         client.logger.info("Finished getting articles for date specified")
 
         if "historic" not in sys.argv:
             time.sleep(60*60*24)  # sleep for 24 hours
+        else:
+            break
