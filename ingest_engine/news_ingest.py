@@ -98,20 +98,30 @@ class NewsClient(object):
                 for article in raw_articles:
                     if not stop_words.search(article["url"]):  # Avoid URLs with the given stop words in them
                         date = datetime.strptime(article["publishedAt"], '%Y-%m-%dT%H:%M:%SZ')
-                        articles_to_insert.append({
+                        doc = {
                             NEWS_ARTICLE.DESCRIPTION: article["description"],
                             NEWS_ARTICLE.TITLE: article["title"],
                             NEWS_ARTICLE.URL: article["url"],
                             NEWS_ARTICLE.SOURCE: article["source"]["name"],
                             NEWS_ARTICLE.PUBLISH_DATE: date,
                             NEWS_ARTICLE.TIMESTAMP: calendar.timegm(date.timetuple())
-                        })
+                        }
+                        self.db_connection.insert_news_article(article=doc)
+
+                        # articles_to_insert.append({
+                        #     NEWS_ARTICLE.DESCRIPTION: article["description"],
+                        #     NEWS_ARTICLE.TITLE: article["title"],
+                        #     NEWS_ARTICLE.URL: article["url"],
+                        #     NEWS_ARTICLE.SOURCE: article["source"]["name"],
+                        #     NEWS_ARTICLE.PUBLISH_DATE: date,
+                        #     NEWS_ARTICLE.TIMESTAMP: calendar.timegm(date.timetuple())
+                        # })
 
             page_no += 1
 
-            if raw_articles:
-                self.db_connection.bulk_insert(data=articles_to_insert, collection=DB.NEWS_ARTICLES)
-                articles_to_insert = []
+            # if raw_articles:
+            #     self.db_connection.bulk_insert(data=articles_to_insert, collection=DB.NEWS_ARTICLES)
+            #     articles_to_insert = []
 
             if not raw_articles:
                 break
@@ -122,7 +132,8 @@ if __name__ == "__main__":
 
     # Collect articles every 24 hours
     while True:
-        since = datetime.now() - timedelta(hours=24)
+        # since = datetime.now() - timedelta(hours=24)
+        since = datetime(year=2018, month=1, day=1)
         client.get_articles(since=since)
         client.logger.info("Getting news articles since month: %s, day: %s, hour: %s" % (since.month,
                                                                                          since.day,

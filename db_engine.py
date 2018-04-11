@@ -37,6 +37,10 @@ class DBConnection(object):
         except Exception as e:
             self.logger.info("Duplicate insertion ignored")
 
+    def insert_news_article(self, article):
+        news_collection = self.db.news_articles
+        result = news_collection.update_one(filter={"url": article["url"]}, update={"$set": article}, upsert=True)
+
     def bulk_insert(self, data, collection):
         """
         Bulk insert when data is NOT tweets
