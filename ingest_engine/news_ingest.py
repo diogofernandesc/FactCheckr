@@ -85,6 +85,9 @@ class NewsClient(object):
                                                    from_parameter=since, sort_by=sort_by, page=page_no,
                                                    page_size=NEWS_API_PARAMS.PAGE_SIZE)
             count += 1
+            if 'articles' not in news_payload:
+                break
+                
             total_articles = None
             if "totalResults" in news_payload:
                 total_articles = news_payload["totalResults"]
