@@ -2,6 +2,7 @@ import logging
 import os
 
 from pymongo import MongoClient, bulk
+from pymongo.errors import DuplicateKeyError
 
 from cons import DB
 
@@ -39,7 +40,10 @@ class DBConnection(object):
 
     def insert_news_article(self, article):
         news_collection = self.db.news_articles
-        result = news_collection.update_one(filter={"url": article["url"]}, update={"$set": article}, upsert=True)
+        try:
+            result = news_collection.update_one(filter={"url": article["url"]}, update={"$set": article}, upsert=True)
+        except DuplicateKeyError as e:
+            pass
 
     def bulk_insert(self, data, collection):
         """
