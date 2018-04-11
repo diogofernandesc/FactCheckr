@@ -136,8 +136,11 @@ if __name__ == "__main__":
         if "historic" in sys.argv:
             since = datetime(year=2018, month=1, day=1)
 
-        client.get_articles(since=since)
         client.logger.info("Getting news articles since month: %s, day: %s, hour: %s" % (since.month,
                                                                                          since.day,
                                                                                          since.hour))
-        time.sleep(60*60*24)  # sleep for 24 hours
+        client.get_articles(since=since)
+        client.logger.info("Finished getting articles for date specified")
+
+        if "historic" not in sys.argv:
+            time.sleep(60*60*24)  # sleep for 24 hours
