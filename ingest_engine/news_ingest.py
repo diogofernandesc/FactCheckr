@@ -132,8 +132,10 @@ if __name__ == "__main__":
 
     # Collect articles every 24 hours
     while True:
-        # since = datetime.now() - timedelta(hours=24)
-        since = datetime(year=2018, month=1, day=1)
+        since = datetime.now() - timedelta(hours=24)
+        if "historic" in sys.argv:
+            since = datetime(year=2018, month=1, day=1)
+
         client.get_articles(since=since)
         client.logger.info("Getting news articles since month: %s, day: %s, hour: %s" % (since.month,
                                                                                          since.day,
