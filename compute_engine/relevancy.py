@@ -1,12 +1,17 @@
 import gensim
 import time
-
+from cons import CREDS
+from ingest_engine.twitter_ingest import Twitter
 import math
-
+import os
 from db_engine import DBConnection
 from cons import DB, TIME_INTERVAL, RELEVANCY_INTERVAL
 from nltk.tokenize import word_tokenize
 import numpy as np
+from langdetect import detect
+from langdetect.lang_detect_exception import LangDetectException
+import re
+
 '''
 Determine the relevancy of a tweet for crowdsourcing based on several factors:
 - Similarity to news articles (mentions of news articles, topics talked about)
@@ -19,6 +24,41 @@ Determine the relevancy of a tweet for crowdsourcing based on several factors:
 class Relevancy(object):
     def __init__(self):
         self.db_connection = DBConnection()
+        self.twitter_api = Twitter(os.environ.get(CREDS.TWITTER_KEY),
+                                   os.environ.get(CREDS.TWITTER_SECRET),
+                                   os.environ.get(CREDS.TWITTER_TOKEN),
+                                   os.environ.get(CREDS.TWITTER_TOKEN_SECRET),
+                                   self.db_connection)
+
+    def cleaner(self, tweets):
+        '''
+        Remove tweets that are too insignificant to classify for relevance score e.g. tweets with one word
+        :param tweets: list of tweets to clean
+        :return:
+        '''
+        for tweet in tweets:
+            try:
+                if tweet['text']:
+                    tweet_data = self.twitter_api.get_status(tweet_id=tweet["_id"])
+                    lang = detect(tweet['text'])
+                    if tweet_data.in_reply_to_status_id:  # It's a reply, not worth fact-checking
+                        self.db_connection.delete_tweet(tweet_id=tweet["_id"])
+
+                    elif lang != 'en':
+                        self.db_connection.delete_tweet(tweet_id=tweet["_id"])
+
+                    elif len(re.findall(r'\w+', tweet['text'])) <= 10:
+                        self.db_connection.delete_tweet(tweet_id=tweet["_id"])
+
+                    elif tweet['text'].count('@') > 4:
+                        self.db_connection.delete_tweet(tweet_id=tweet["_id"])
+
+                    elif tweet['text'].count('#') > 4:
+                        self.db_connection.delete_tweet(tweet_id=tweet["_id"])
+
+            except LangDetectException as e:
+                print e
+                self.db_connection.delete_tweet(tweet['text'])
 
     def get_prediction_model(self, timestamp, time_interval):
         '''
@@ -62,6 +102,7 @@ class Relevancy(object):
 
         else:
             return None
+
 
     def calculate_relevance(self, tweets, timestamp, time_interval):
         start_timestamp = timestamp - time_interval
@@ -131,19 +172,31 @@ def main():
     initial_timestamp = 1515715200
     timestamp = initial_timestamp
     end_timestamp = time.time()
-    while timestamp <= end_timestamp:
-        period_timestamp = timestamp + TIME_INTERVAL.DAY
-        tweets = rel.db_connection.find_document(collection=DB.TWEET_COLLECTION,
-                                                 filter={"$and": [
-                                                     {"created_at_epoch": {"$lt": period_timestamp}},
-                                                     {"created_at_epoch": {"$gt": timestamp}}
-                                                 ]},
-                                                 projection={"text": 1})
 
-        if tweets.count() > 0:
-            rel.calculate_relevance(tweets=tweets, timestamp=timestamp, time_interval=TIME_INTERVAL.MONTH)
+    tweets = rel.db_connection.find_document(collection=DB.TWEET_COLLECTION,
+                                             filter={"relevancy_week": {"$exists": True}},
+                                             projection={"text": 1})
 
-        timestamp = period_timestamp
+    if tweets.count() > 0:
+        rel.cleaner(tweets)
+
+    # while timestamp <= end_timestamp:
+    #     period_timestamp = timestamp + TIME_INTERVAL.DAY
+    #     # tweets = rel.db_connection.find_document(collection=DB.TWEET_COLLECTION,
+    #     #                                          filter={"$and": [
+    #     #                                              {"created_at_epoch": {"$lt": period_timestamp}},
+    #     #                                              {"created_at_epoch": {"$gt": timestamp}},
+    #     #                                              {"relevancy_week": {"$exists": True}}
+    #     #                                          ]},
+    #     #                                          projection={"text": 1})
+    #
+    #
+    #
+    #     # if tweets.count() > 0:
+    #     #     rel.cleaner(tweets)
+    #         # rel.calculate_relevance(tweets=tweets, timestamp=timestamp, time_interval=TIME_INTERVAL.MONTH)
+    #
+    #     timestamp = period_timestamp
 
 
 # rel = Relevancy()

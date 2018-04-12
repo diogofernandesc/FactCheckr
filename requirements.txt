@@ -16,3 +16,4 @@ seaborn
 sklearn-crfsuite
 jupyter
 joblib
+langdetect
