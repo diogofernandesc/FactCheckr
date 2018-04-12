@@ -3,6 +3,7 @@ import logging
 import sys
 sys.path.append("..")
 from requests import ConnectionError
+import twitter_ner_fork.NoisyNLP.models
 from watson_developer_cloud import NaturalLanguageUnderstandingV1
 from watson_developer_cloud.natural_language_understanding_v1 import Features, KeywordsOptions, EntitiesOptions, RelationsOptions
 from watson_developer_cloud.watson_service import WatsonApiException
@@ -20,6 +21,9 @@ from rosette.api import API, DocumentParameters, RosetteException
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 logger = logging.getLogger(__name__)
 
+from twitter_ner_fork.run_ner import TwitterNER
+from twitter_ner_fork.twokenize import tokenizeRawTweetText
+
 
 class EntityExtractor(TweetHandler):
     def __init__(self):
@@ -27,6 +31,7 @@ class EntityExtractor(TweetHandler):
         self.nlu = NaturalLanguageUnderstandingV1(version='2017-02-27',
                                                   username=os.getenv('IBM_USER'), password=os.getenv('IBM_PASS'))
         self.rosette = API(user_key=os.getenv("ROSETTE_API_KEY"))
+        self.twitter_ner = TwitterNER()
 
     def get_clean(self, filter={}, limit=4000, tweet=None, collection=DB.TWEET_COLLECTION):
         """
@@ -82,6 +87,25 @@ class EntityExtractor(TweetHandler):
             logger.warn("Rossete API exception: %s" % exception)
             return []
 
+    def analyse_ner(self, tweet):
+        tokens = tokenizeRawTweetText(tweet)
+        entity_info = self.twitter_ner.get_entities(tokens)
+        entities = []
+        for entity in entity_info:
+            index1 = entity[0]
+            index2 = entity[1]
+            en_type = entity[2]
+            entities.append({
+                "entity": " ".join(tokens[index1:index2]),
+                "type": en_type
+            })
+        return entities
+        # [(3, 4, 'LOCATION'), (11, 12, 'LOCATION')]
+        # >> > " ".join(tokens[3:4])
+        # 'Chicago'
+        # >> > " ".join(tokens[11:12])
+        # 'Florida'
+
 
     def analyse(self, since_epoch, retweets=False):
         """
@@ -111,8 +135,9 @@ class EntityExtractor(TweetHandler):
             except WatsonApiException:
                 response = []
 
+            ner_entities = self.analyse_ner(tweet=tweet[1])
             rosette_entities = self.analyse_rosette(tweet=tweet[1])
-            entities = entities + rosette_entities
+            entities = entities + rosette_entities + ner_entities
 
             if response:
                 for keyword in response['keywords']:

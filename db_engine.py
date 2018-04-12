@@ -109,7 +109,6 @@ class DBConnection(object):
     def update_tweet(self, tweet_id, update):
         tweet_data = self.db.mp_tweets
         result = tweet_data.update_one(filter={"_id": tweet_id}, update={"$set": update}, upsert=False)
-        print result
 
     def close(self):
         self.client.close()

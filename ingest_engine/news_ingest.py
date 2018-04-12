@@ -16,7 +16,7 @@ logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 class NewsClient(object):
     def __init__(self):
         self.logger = logging.getLogger(__name__)
-        self.api = NewsApiClient(api_key="419a08e8024d44ae8f5fd4e3ac9de131")
+        self.api = NewsApiClient(api_key="0d0fe7063a414d63ad34d037d87ca92f")
         self.db_connection = DBConnection()
 
     def get_sources(self):
@@ -82,12 +82,13 @@ class NewsClient(object):
         count = 0
         while True:
             news_payload = self.api.get_everything(q=query, language='en', sources=sources,
-                                                   from_parameter=since, sort_by=sort_by, page=page_no,
+                                                   from_parameter=since, to='2018-01-15', sort_by=sort_by, page=page_no,
                                                    page_size=NEWS_API_PARAMS.PAGE_SIZE)
             count += 1
             if 'articles' not in news_payload:
+                self.logger.info("hit API limit, stopping")
                 break
-                
+
             total_articles = None
             if "totalResults" in news_payload:
                 total_articles = news_payload["totalResults"]
@@ -125,10 +126,10 @@ class NewsClient(object):
 
             page_no += 1
 
-            if count >= 240:
-                self.logger.info("Stopping news collection due to API limits")
-                self.logger.info("last timestamp: %s" % calendar.timegm(date.timetuple()))
-                break
+            # if count >= 240:
+            #     self.logger.info("Stopping news collection due to API limits")
+            #     self.logger.info("last timestamp: %s" % calendar.timegm(date.timetuple()))
+            #     break
 
             # if raw_articles:
             #     self.db_connection.bulk_insert(data=articles_to_insert, collection=DB.NEWS_ARTICLES)

@@ -1,13 +1,18 @@
 import gensim
+import time
+
+import math
+
 from db_engine import DBConnection
-from cons import DB
+from cons import DB, TIME_INTERVAL, RELEVANCY_INTERVAL
 from nltk.tokenize import word_tokenize
+import numpy as np
 '''
 Determine the relevancy of a tweet for crowdsourcing based on several factors:
 - Similarity to news articles (mentions of news articles, topics talked about)
-- The importance of a news article
-- Wikipedia trends for the day, week and month of the tweet
-- Twitter trends for the day and week (month is too irrelevant for Twitter)
+- The importance of a news article (Basis for relevance0
+- Wikipedia trends for the day, week and month of the tweet (10% relevance each)
+- Twitter trends for the day and week (month is too irrelevant for Twitter) (10% relevance)
 '''
 
 
@@ -15,62 +20,138 @@ class Relevancy(object):
     def __init__(self):
         self.db_connection = DBConnection()
 
-    def create_similarity_model(self, timestamp, tweet):
+    def get_prediction_model(self, timestamp, time_interval):
         '''
         Given a timestamp, gets relevant:
          - News articles
          - Trends
         Builds the contents of these into similarity measure object
-        :param timestamp:
+        :param tweet: Tweet to analyse
+        :param timestamp: Timestamp to analyse from
+        :param time_interval: Interval of time for which to create the similarity
         :return: similarity measure object to query tweets against
         '''
 
-        documents = []
+        start_timestamp = timestamp - time_interval
+
+        articles = []
         articles_ingest = self.db_connection.find_document(collection=DB.NEWS_ARTICLES,
-                                                    filter={"$and": [{"timestamp": {"$lt": timestamp}}, {"timestamp": {"$gt":1519569271}}]},
-                                                    projection={"title": 1, "description": 1})
+                                                           filter={"$and": [{"timestamp": {"$gt": start_timestamp}},
+                                                                            {"timestamp": {"$lt": timestamp}}]},
+                                                           projection={"title": 1, "description": 1})
 
-        twitter_trends_ingest = self.db_connection.find_document(collection=DB.TWITTER_TRENDS,
-                                                          filter={"$and": [{"timestamp_epoch": {"$lt": timestamp}}, {"timestamp_epoch": {"$gt":1519569271}}]},
-                                                          projection={"name": 1})
+        if articles_ingest.count() > 0:
+            for article in articles_ingest:
+                if 'description' in article:
+                    if article['description']:
+                        articles.append(article['description'])
 
-        wiki_trends_ingest = self.db_connection.find_document(collection=DB.WIKI_TRENDS,
-                                                       filter={"$and": [{"epoch_timestamp": {"$lt": timestamp}}, {"epoch_timestamp": {"$gt":1519569271}}]},
-                                                       projection={"name": 1})
+                if 'title' in article:
+                    if article['title']:
+                        articles.append(article['title'])
 
-        for article in articles_ingest:
-            documents.append(article['description'])
-            documents.append(article['title'])
+            gen_docs = [[w.lower() for w in word_tokenize(text)] for text in articles]
+            dictionary = gensim.corpora.Dictionary(gen_docs)
+            corpus = [dictionary.doc2bow(gen_doc) for gen_doc in gen_docs]
+            tf_idf = gensim.models.TfidfModel(corpus)
+            # sims = gensim.similarities.Similarity('gensim', tf_idf[corpus], num_features=len(dictionary))
 
-        for trend in twitter_trends_ingest:
-            documents.append(trend['name'])
+            index = gensim.similarities.SparseMatrixSimilarity(tf_idf[corpus], num_features=len(dictionary))
 
-        for trend in wiki_trends_ingest:
-            documents.append(trend['name'])
+            return [index, dictionary, tf_idf]
 
-        gen_docs = [[w.lower() for w in word_tokenize(text)] for text in documents]
-        dictionary = gensim.corpora.Dictionary(gen_docs)
-        corpus = [dictionary.doc2bow(gen_doc) for gen_doc in gen_docs]
-        tf_idf = gensim.models.TfidfModel(corpus)
-        # sims = gensim.similarities.Similarity('gensim', tf_idf[corpus], num_features=len(dictionary))
+        else:
+            return None
 
-        index = gensim.similarities.SparseMatrixSimilarity(tf_idf[corpus], num_features=len(dictionary))
-        query_doc = [w.lower() for w in word_tokenize(tweet)]
-        query_doc_bow = dictionary.doc2bow(query_doc)
-        query_doc_tf_idf = tf_idf[query_doc_bow]
+    def calculate_relevance(self, tweets, timestamp, time_interval):
+        start_timestamp = timestamp - time_interval
 
-        sims = index[query_doc_tf_idf]
-        print(list(enumerate(sims)))
+        model = self.get_prediction_model(timestamp=timestamp, time_interval=time_interval)
+        if model:
+            twitter_trends_ingest = self.db_connection.find_document(collection=DB.TWITTER_TRENDS,
+                                                                     filter={"$and": [
+                                                                         {"timestamp_epoch": {"$gt": start_timestamp}},
+                                                                         {"timestamp_epoch": {"$lt": timestamp}}]},
+                                                                     projection={"name": 1})
 
-        # print sims[query_doc_tf_idf]
+            wiki_trends_ingest = self.db_connection.find_document(collection=DB.WIKI_TRENDS,
+                                                                  filter={"$and": [
+                                                                      {"epoch_timestamp": {"$gt": start_timestamp}},
+                                                                      {"epoch_timestamp": {"$lt": timestamp}}]},
+                                                                  projection={"name": 1})
+
+            for tweet in tweets:
+                query_doc = [w.lower() for w in word_tokenize(tweet['text'])]
+                query_doc_bow = model[1].doc2bow(query_doc)
+                query_doc_tf_idf = model[2][query_doc_bow]
+
+                sims = model[0][query_doc_tf_idf]
+                relevance = sims[sims != 0].mean()
+
+                if not math.isnan(relevance):
+                    twitter_trends = []
+                    wiki_trends = []
+
+                    for trend in twitter_trends_ingest:
+                        twitter_trends.append(trend['name'])
+
+                    for trend in wiki_trends_ingest:
+                        wiki_trends.append(trend['name'])
+
+                    for trend in twitter_trends:
+                        if trend in tweet:
+                            relevance += (0.1 * relevance)  # 10% relevance booster for each trend
+
+                    for trend in wiki_trends:
+                        if trend in tweet:
+                            relevance += (0.1 * relevance)  # 10% relevance booster for each trend
+
+                    relevance = float(relevance)
+
+                    if time_interval == TIME_INTERVAL.DAY:
+                        self.db_connection.update_tweet(tweet_id=tweet["_id"], update={RELEVANCY_INTERVAL.DAY: relevance})
+
+                    elif time_interval == TIME_INTERVAL.WEEK:
+                        self.db_connection.update_tweet(tweet_id=tweet["_id"], update={RELEVANCY_INTERVAL.WEEK: relevance})
+
+                    elif time_interval == TIME_INTERVAL.WEEK * 2:
+                        self.db_connection.update_tweet(tweet_id=tweet["_id"], update={RELEVANCY_INTERVAL.TWO_WEEKS: relevance})
+
+                    elif time_interval == TIME_INTERVAL.MONTH:
+                        self.db_connection.update_tweet(tweet_id=tweet["_id"], update={RELEVANCY_INTERVAL.MONTH: relevance})
+
+                else:
+                    continue
 
 
+def main():
+    rel = Relevancy()
 
-rel = Relevancy()
-tweet = rel.db_connection.find_document(collection=DB.TWEET_COLLECTION, filter={"_id": 965948087922552833},
-                                        projection={"text": 1})
+    # 11th Jan 2018
+    initial_timestamp = 1515715200
+    timestamp = initial_timestamp
+    end_timestamp = time.time()
+    while timestamp <= end_timestamp:
+        period_timestamp = timestamp + TIME_INTERVAL.DAY
+        tweets = rel.db_connection.find_document(collection=DB.TWEET_COLLECTION,
+                                                 filter={"$and": [
+                                                     {"created_at_epoch": {"$lt": period_timestamp}},
+                                                     {"created_at_epoch": {"$gt": timestamp}}
+                                                 ]},
+                                                 projection={"text": 1})
 
-rel.create_similarity_model(1521988471, tweet=tweet[0]['text'])
+        if tweets.count() > 0:
+            rel.calculate_relevance(tweets=tweets, timestamp=timestamp, time_interval=TIME_INTERVAL.MONTH)
+
+        timestamp = period_timestamp
+
+
+# rel = Relevancy()
+# tweet = rel.db_connection.find_document(collection=DB.TWEET_COLLECTION, filter={"_id": 965948087922552833},
+#                                         projection={"text": 1})
+
+main()
+# rel.calculate_relevance(tweet=tweet[0], timestamp=1521988471, time_interval=TIME_INTERVAL.WEEK)
 
 
 
