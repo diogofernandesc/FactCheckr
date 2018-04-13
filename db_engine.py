@@ -2,6 +2,7 @@ import logging
 import os
 
 from pymongo import MongoClient, bulk
+from pymongo.errors import DuplicateKeyError
 
 from cons import DB
 
@@ -36,6 +37,13 @@ class DBConnection(object):
 
         except Exception as e:
             self.logger.info("Duplicate insertion ignored")
+
+    def insert_news_article(self, article):
+        news_collection = self.db.news_articles
+        try:
+            result = news_collection.update_one(filter={"url": article["url"]}, update={"$set": article}, upsert=True)
+        except DuplicateKeyError as e:
+            pass
 
     def bulk_insert(self, data, collection):
         """
@@ -76,7 +84,7 @@ class DBConnection(object):
             self.logger.warning(bwe.details)
 
     def find_document(self, collection, filter=None, projection=None, limit=0):
-        return self.db[collection].find(filter=filter, projection=projection, no_cursor_timeout=True, limit=limit)
+        return self.db[collection].find(filter=filter, projection=projection, no_cursor_timeout=True,  limit=limit).sort("relevancy_week", -1)
 
     def find_and_update(self, collection, query=None, update=None):
         result = self.db[collection].update_one(query, update)
@@ -101,7 +109,16 @@ class DBConnection(object):
     def update_tweet(self, tweet_id, update):
         tweet_data = self.db.mp_tweets
         result = tweet_data.update_one(filter={"_id": tweet_id}, update={"$set": update}, upsert=False)
-        print result
+
+    def delete_tweet(self, tweet_id):
+        tweet_data = self.db.mp_tweets
+        result = tweet_data.delete_one({'_id': tweet_id})
+        print result.deleted_count
+
+    def delete_tweets_by_id(self, tweet_ids):
+        tweet_data = self.db.mp_tweets
+        result = tweet_data.delete_many({"_id": {"$in": [tweet_ids]}})
+        print result.deleted_count
 
     def close(self):
         self.client.close()

@@ -8,3 +8,12 @@ mwviews
 watson_developer_cloud
 rosette_api
 gensim
+future
+scikit-learn
+regex
+matplotlib
+seaborn
+sklearn-crfsuite
+jupyter
+joblib
+langdetect
