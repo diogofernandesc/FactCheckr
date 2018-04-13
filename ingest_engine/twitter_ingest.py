@@ -62,6 +62,9 @@ class Twitter(object):
         self.db_connection.update_tweet(tweet_id=status_id, update={"html": html})
         return html
 
+    def get_status(self, tweet_id):
+        return self.api.GetStatus(status_id=tweet_id)
+
     def get_historic_trends(self, month, day):
         trends_to_insert = []
         link = "https://trendogate.com/placebydate/23424975/2018-%s-%s" % (month, day)

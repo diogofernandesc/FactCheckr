@@ -180,23 +180,22 @@ def main():
     if tweets.count() > 0:
         rel.cleaner(tweets)
 
-    # while timestamp <= end_timestamp:
-    #     period_timestamp = timestamp + TIME_INTERVAL.DAY
-    #     # tweets = rel.db_connection.find_document(collection=DB.TWEET_COLLECTION,
-    #     #                                          filter={"$and": [
-    #     #                                              {"created_at_epoch": {"$lt": period_timestamp}},
-    #     #                                              {"created_at_epoch": {"$gt": timestamp}},
-    #     #                                              {"relevancy_week": {"$exists": True}}
-    #     #                                          ]},
-    #     #                                          projection={"text": 1})
-    #
-    #
-    #
-    #     # if tweets.count() > 0:
-    #     #     rel.cleaner(tweets)
-    #         # rel.calculate_relevance(tweets=tweets, timestamp=timestamp, time_interval=TIME_INTERVAL.MONTH)
-    #
-    #     timestamp = period_timestamp
+    while timestamp <= end_timestamp:
+        period_timestamp = timestamp + TIME_INTERVAL.DAY
+        tweets = rel.db_connection.find_document(collection=DB.TWEET_COLLECTION,
+                                                 filter={"$and": [
+                                                     {"created_at_epoch": {"$lt": period_timestamp}},
+                                                     {"created_at_epoch": {"$gt": timestamp}},
+                                                     {"relevancy_week": {"$exists": True}}
+                                                 ]},
+                                                 projection={"text": 1})
+
+
+        if tweets.count() > 0:
+            # rel.cleaner(tweets)
+            rel.calculate_relevance(tweets=tweets, timestamp=timestamp, time_interval=TIME_INTERVAL.MONTH)
+
+        timestamp = period_timestamp
 
 
 # rel = Relevancy()

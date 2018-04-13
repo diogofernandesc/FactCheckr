@@ -30,8 +30,8 @@ class EntityExtractor(TweetHandler):
         super(EntityExtractor, self).__init__()
         self.nlu = NaturalLanguageUnderstandingV1(version='2017-02-27',
                                                   username=os.getenv('IBM_USER'), password=os.getenv('IBM_PASS'))
-        self.rosette = API(user_key=os.getenv("ROSETTE_API_KEY"))
-        self.twitter_ner = TwitterNER()
+        self.rosette = API(user_key="bbaeaa6068517ac51012f1e7826ead48")
+        # self.twitter_ner = TwitterNER()
 
     def get_clean(self, filter={}, limit=4000, tweet=None, collection=DB.TWEET_COLLECTION):
         """
@@ -106,7 +106,6 @@ class EntityExtractor(TweetHandler):
         # >> > " ".join(tokens[11:12])
         # 'Florida'
 
-
     def analyse(self, since_epoch, retweets=False):
         """
         :param since_epoch: timestamp from which to collect tweets
@@ -119,9 +118,15 @@ class EntityExtractor(TweetHandler):
             collection = DB.RETWEET_COLLECTION
 
         # Get tweets that have not been analysed yet
+        # tweets = self.get_clean(collection=collection,
+        #                         filter={"$and": [{"created_at_epoch": {"$gt": since_epoch}},
+        #                                          {"created_at_epoch": {"$lt": 1523491200}},
+        #                                          {"$or": [{"keywords": None}, {"entities": None}]}]})
+
         tweets = self.get_clean(collection=collection,
                                 filter={"$and": [{"created_at_epoch": {"$gt": since_epoch}},
-                                                 {"$or": [{"keywords": None}, {"entities": None}]}]})
+                                                 {"created_at_epoch": {"$lt": 1523491200}},
+                                                 ]})
 
         count = 0
         
@@ -135,9 +140,9 @@ class EntityExtractor(TweetHandler):
             except WatsonApiException:
                 response = []
 
-            ner_entities = self.analyse_ner(tweet=tweet[1])
+            # ner_entities = self.analyse_ner(tweet=tweet[1])
             rosette_entities = self.analyse_rosette(tweet=tweet[1])
-            entities = entities + rosette_entities + ner_entities
+            entities = entities + rosette_entities
 
             if response:
                 for keyword in response['keywords']:
@@ -165,7 +170,7 @@ class EntityExtractor(TweetHandler):
 def main():
     while True:
         # 1514764800 = 1st of January 2018 00:00:00
-        ext.analyse(since_epoch=1521988461)
+        ext.analyse(since_epoch=1520812800) #12th march 2018
         ext.analyse(since_epoch=1514764800, retweets=True)
 
         logger.info("Now sleeping entity/keyword extractor")
