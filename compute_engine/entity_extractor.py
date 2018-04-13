@@ -30,7 +30,7 @@ class EntityExtractor(TweetHandler):
         super(EntityExtractor, self).__init__()
         self.nlu = NaturalLanguageUnderstandingV1(version='2017-02-27',
                                                   username=os.getenv('IBM_USER'), password=os.getenv('IBM_PASS'))
-        self.rosette = API(user_key="bbaeaa6068517ac51012f1e7826ead48")
+        self.rosette = API(user_key=os.getenv("ROSETTE_API_KEY"))
         # self.twitter_ner = TwitterNER()
 
     def get_clean(self, filter={}, limit=4000, tweet=None, collection=DB.TWEET_COLLECTION):
