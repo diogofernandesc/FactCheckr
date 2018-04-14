@@ -83,8 +83,12 @@ class DBConnection(object):
         except self.client.BulkWriteError as bwe:
             self.logger.warning(bwe.details)
 
-    def find_document(self, collection, filter=None, projection=None, limit=0):
-        return self.db[collection].find(filter=filter, projection=projection, no_cursor_timeout=True,  limit=limit).sort("relevancy_week", -1)
+    def find_document(self, collection, filter=None, projection=None, limit=0, sort=False, sort_field=None):
+        if sort:
+            return self.db[collection].find(filter=filter, projection=projection, no_cursor_timeout=True,
+                                            limit=limit).sort(sort_field, -1)
+        else:
+            return self.db[collection].find(filter=filter, projection=projection, no_cursor_timeout=True,  limit=limit)
 
     def find_and_update(self, collection, query=None, update=None):
         result = self.db[collection].update_one(query, update)
