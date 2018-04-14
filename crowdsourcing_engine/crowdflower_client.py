@@ -1,8 +1,11 @@
-import crowdflower
 import crowdflower.client
 import os
+from db_engine import DBConnection
 import json
 from cons import CROWDFLOWER as CF
+from cons import DB
+import requests
+import json
 
 
 def dumper(obj):
@@ -16,7 +19,16 @@ class CrowdFlower(object):
 
     def __init__(self):
         self.client = crowdflower.client.Client(os.getenv("CROWDFLOWER_API_KEY"))
+        self.db_connection = DBConnection()
+        self.api_key = os.getenv("CROWDFLOWER_API_KEY")
+        self.judgements_session = requests.session()
+
         # self.connection = crowdflower.Connection(api_key=os.getenv("CROWDFLOWER_API_KEY"))
+
+    def chunks(self, l, n):
+        """Yield successive n-sized chunks from l."""
+        for i in range(0, len(l), n):
+            yield l[i:i + n]
 
     def get_jobs(self):
         job = self.client.get_job(1239688)
@@ -53,12 +65,72 @@ class CrowdFlower(object):
         """
         job.update()
 
+    def get_judgements(self, job_id):
+        page_no = 1
+        results = self.judgements_session.get(
+            url="https://api.figure-eight.com/v1/jobs/%s/judgments.json?key=%s&page=%s" %
+                (job_id, self.api_key, page_no))
+
+        content = json.loads(results.content)
+        for key, result in content.iteritems():
+            print result
+            # json_result = json.loads(results)
+
+    def get_fact_opinion(self, job_id):
+        crowd_data = []
+        tweet_list = []
+        job = self.client.get_job(job_id)
+        tweets = self.db_connection.find_document(collection=DB.TWEET_COLLECTION,
+                                                  filter={"$and": [
+                                                      {"created_at_epoch": {"$gt": 1520812800}},
+                                                      {"created_at_epoch": {"$lt": 1523491200}},
+                                                      {"entities": {"$exists": True}},
+                                                      {"keywords": {"$exists": True}}
+                                                  ]},
+                                                  projection={"text": 1, "entities": 1, "keywords": 1},
+                                                  limit=2000,
+                                                  sort=True, sort_field="retweet_count")
+
+        for tweet in tweets:
+            if len(tweet['entities']) > 2 and len(tweet['keywords']) > 2:
+                tweet_list.append(tweet['text'])
+
+        data_list = list(self.chunks(tweet_list, 10))  # Chunk data
+        for data in data_list:
+            if len(data) == 10:
+                crowd_data.append({
+                    "tweet_list": data
+                })
+
+        job.upload(data=crowd_data, force=True)
+
     def process_job(self):
-        job = self.client.get_job(1239672)
-        data = {
-            "tweet_content": "A given tweet"
-        }
-        job.upload(data=[data], force=True)
+        data_list = []
+        job = self.client.get_job(1256982)
+        tweets = self.db_connection.find_document(collection=DB.TWEET_COLLECTION,
+                                                  filter={"$and": [
+                                                      {"created_at_epoch": {"$gt": 1520812800}},
+                                                      {"created_at_epoch": {"$lt": 1523491200}},
+                                                      {"entities": {"$exists": True}},
+                                                      {"keywords": {"$exists": True}}
+                                                 ]},
+                                                  projection={"text": 1, "entities": 1, "keywords": 1})
+
+        for tweet in tweets:
+            if len(tweet['entities']) > 2 and len(tweet['keywords']) > 2:
+                entities = []
+                for entity_data in tweet['entities']:
+                    if entity_data['entity'] not in entities:
+                        entities.append(entity_data['entity'])
+
+                data_list.append({
+                    "tweet_content": tweet["text"],
+                    "entity_list": entities,
+                    "keyword_list": tweet["keywords"],
+                    "full_list": entities + tweet["keywords"]
+                })
+
+        job.upload(data=data_list, force=True)
 
     def update_data(self, tweet_content, entity_list):
         job = self.client.get_job(1239688)
@@ -86,4 +158,7 @@ class CrowdFlower(object):
         job.upload(data=data_list, force=True)
 
 cf = CrowdFlower()
-cf.process_job()
+# cf.process_job()
+# cf.get_judgements(job_id=1256982)
+cf.get_fact_opinion(job_id=1257130)
+
