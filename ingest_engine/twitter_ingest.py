@@ -4,6 +4,7 @@ import sys
 import re
 from operator import itemgetter
 
+import requests
 from urllib3.exceptions import NewConnectionError
 
 sys.path.append("..")
@@ -16,6 +17,7 @@ import time
 from datetime import datetime
 import logging
 from requests.exceptions import ConnectionError
+from bs4 import BeautifulSoup
 
 
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
@@ -30,6 +32,7 @@ class Twitter(object):
         self.consumer_secret = consumer_secret
         self.access_token_key = access_token_key
         self.access_token_secret = access_token_secret
+        self.session = requests.session()
         self.api = twitter.Api(
             consumer_key=self.consumer_key,
             consumer_secret=self.consumer_secret,
@@ -58,6 +61,35 @@ class Twitter(object):
         html = self.api.GetStatusOembed(status_id=status_id)['html']
         self.db_connection.update_tweet(tweet_id=status_id, update={"html": html})
         return html
+
+    def get_status(self, tweet_id):
+        return self.api.GetStatus(status_id=tweet_id)
+
+    def get_historic_trends(self, month, day):
+        trends_to_insert = []
+        link = "https://trendogate.com/placebydate/23424975/2018-%s-%s" % (month, day)
+        response = self.session.get(link)
+        if response.status_code == 200:
+            page = response.content
+        else:
+            raise requests.ConnectionError("Couldn't connect to that URL.")
+
+        soup = BeautifulSoup(page, 'html.parser')
+        # for ultag in soup.find_all('ul', {'class': 'my_class'}):
+        for entry in soup.findAll('ul', {'class': 'list-group'}):
+            for litag in entry.find_all('li'):
+                date = datetime(year=2018, month=month, day=day, hour=12)
+                trend_doc = {
+                    TWITTER_TREND.NAME: litag.text,
+                    TWITTER_TREND.TIMESTAMP: date,
+                    TWITTER_TREND.TIMESTAMP_EPOCH: calendar.timegm(date.timetuple()),
+                    TWITTER_TREND.LOCATION: "United Kingdom",
+                }
+                trends_to_insert.append(trend_doc)
+
+        self.db_connection.bulk_insert(data=trends_to_insert, collection=DB.TWITTER_TRENDS)
+        logger.info("Inserted twitter trends for: %s/%s/2018" % (day, month))
+
 
     def get_trends(self, location=WOEIDS.UK, globally=False):
         """
@@ -458,6 +490,20 @@ def main():
                           db_connection)
 
     if "trends" in sys.argv:
+        if "historic" in sys.argv:
+            date = datetime.today()
+            day_end = date.day - 1
+            month_end = date.month
+            month = 1
+            day = 2
+            while month != month_end or day != day_end:
+                twitter_api.get_historic_trends(month=month, day=day)
+                time.sleep(3)
+                day += 1
+                if day % 30 == 0:
+                    month += 1
+                    day = 1
+
         globally = "global" in sys.argv
         is_uk = "UK" in sys.argv
 
