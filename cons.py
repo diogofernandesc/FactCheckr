@@ -16,6 +16,7 @@ class NEWS_ARTICLE(object):
     SOURCE = "source"
     PUBLISH_DATE = "published_at"
     CATEGORY = "category"
+    TIMESTAMP = "timestamp"
 
 
 class NEWS_SOURCE(object):
@@ -125,4 +126,16 @@ class CROWDFLOWER(object):
     TWEET_CONTENT = 'tweet_content'
     ENTITY_LIST = 'entity_list'
 
+
+class TIME_INTERVAL(object):
+    DAY = 86400
+    WEEK = 604800
+    MONTH = 2629746
+
+
+class RELEVANCY_INTERVAL(object):
+    DAY = 'relevancy_day'
+    WEEK = 'relevancy_week'
+    TWO_WEEKS = 'relevancy_2weeks'
+    MONTH = 'relevancy_month'
 
