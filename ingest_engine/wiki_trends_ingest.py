@@ -66,6 +66,7 @@ class WikiIngest(object):
 
 if __name__ == "__main__":
     wiki_ingest = WikiIngest()
+    start = datetime(year=2018, month=1, day=1)
     while True:
         # wiki_ingest.get_top_articles()
         yesterday = datetime.now() - timedelta(days=1)
@@ -77,7 +78,6 @@ if __name__ == "__main__":
             time.sleep(60 * 60 * 24)
 
         # Get historic
-        start = datetime(year=2018, month=1, day=1)
         wiki_ingest.logger.info("Getting HISTORIC wikipedia trends for month: %s, day: %s, hour: %s" % (start.month,
                                                                                                         start.day,
                                                                                                         start.hour))
