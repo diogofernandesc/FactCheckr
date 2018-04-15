@@ -38,6 +38,18 @@ class DBConnection(object):
         except Exception as e:
             self.logger.info("Duplicate insertion ignored")
 
+    def start_bulk_upsert(self, collection):
+        bulk = self.db[collection].initialize_ordered_bulk_op()
+        return bulk
+
+    def add_to_bulk_upsert(self, query, data, bulk_op):
+        result = bulk_op.find(query).upsert().update({"$set": data})
+        return result
+
+    def end_bulk_upsert(self, bulk_op):
+        results = bulk_op.execute()
+        return results
+
     def insert_news_article(self, article):
         news_collection = self.db.news_articles
         try:
