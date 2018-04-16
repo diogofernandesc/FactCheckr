@@ -140,3 +140,54 @@ class RELEVANCY_INTERVAL(object):
     TWO_WEEKS = 'relevancy_2weeks'
     MONTH = 'relevancy_month'
 
+
+HAPPY_EMOJI = {
+    u':cat_face_with_wry_smile:': u'\U0001F63C',
+    u':cat_face_with_tears_of_joy:': u'\U0001F639',
+    u':grimacing_face:': u'\U0001F62C',
+    u':grinning_cat_face:': u'\U0001F63A',
+    u':grinning_cat_face_with_smiling_eyes:': u'\U0001F638',
+    u':grinning_face:': u'\U0001F600',
+    u':grinning_face_with_big_eyes:': u'\U0001F603',
+    u':grinning_face_with_smiling_eyes:': u'\U0001F604',
+    u':grinning_face_with_sweat:': u'\U0001F605',
+    u':grinning_squinting_face:': u'\U0001F606',
+    u':kissing_face_with_smiling_eyes:': u'\U0001F619',
+    u':slightly_smiling_face:': u'\U0001F642',
+    u':smiling_cat_face_with_heart-eyes:': u'\U0001F63B',
+    u':smiling_face:': u'\U0000263A',
+    u':smiling_face_with_halo:': u'\U0001F607',
+    u':smiling_face_with_heart-eyes:': u'\U0001F60D',
+    u':smiling_face_with_horns:': u'\U0001F608',
+    u':smiling_face_with_smiling_eyes:': u'\U0001F60A',
+    u':smiling_face_with_sunglasses:': u'\U0001F60E',
+    u':smirking_face:': u'\U0001F60F',
+    u':beaming_face_with_smiling_eyes:': u'\U0001F601',
+}
+
+UNHAPPY_EMOJI = {
+    u':man_frowning:': u'\U0001F64D\U0000200D\U00002642\U0000FE0F',
+    u':man_frowning_dark_skin_tone:': u'\U0001F64D\U0001F3FF\U0000200D\U00002642\U0000FE0F',
+    u':man_frowning_light_skin_tone:': u'\U0001F64D\U0001F3FB\U0000200D\U00002642\U0000FE0F',
+    u':man_frowning_medium-dark_skin_tone:': u'\U0001F64D\U0001F3FE\U0000200D\U00002642\U0000FE0F',
+    u':man_frowning_medium-light_skin_tone:': u'\U0001F64D\U0001F3FC\U0000200D\U00002642\U0000FE0F',
+    u':man_frowning_medium_skin_tone:': u'\U0001F64D\U0001F3FD\U0000200D\U00002642\U0000FE0F',
+    u':person_frowning:': u'\U0001F64D',
+    u':person_frowning_dark_skin_tone:': u'\U0001F64D\U0001F3FF',
+    u':person_frowning_light_skin_tone:': u'\U0001F64D\U0001F3FB',
+    u':person_frowning_medium-dark_skin_tone:': u'\U0001F64D\U0001F3FE',
+    u':person_frowning_medium-light_skin_tone:': u'\U0001F64D\U0001F3FC',
+    u':person_frowning_medium_skin_tone:': u'\U0001F64D\U0001F3FD',
+    u':slightly_frowning_face:': u'\U0001F641',
+    u':woman_frowning:': u'\U0001F64D\U0000200D\U00002640\U0000FE0F',
+    u':woman_frowning_dark_skin_tone:': u'\U0001F64D\U0001F3FF\U0000200D\U00002640\U0000FE0F',
+    u':woman_frowning_light_skin_tone:': u'\U0001F64D\U0001F3FB\U0000200D\U00002640\U0000FE0F',
+    u':woman_frowning_medium-dark_skin_tone:': u'\U0001F64D\U0001F3FE\U0000200D\U00002640\U0000FE0F',
+    u':woman_frowning_medium-light_skin_tone:': u'\U0001F64D\U0001F3FC\U0000200D\U00002640\U0000FE0F',
+    u':woman_frowning_medium_skin_tone:': u'\U0001F64D\U0001F3FD\U0000200D\U00002640\U0000FE0F',
+    u':frowning_face:': u'\U00002639',
+    u':frowning_face_with_open_mouth:': u'\U0001F626',
+}
+
+EMOJI_HAPPY = {v: k for k, v in HAPPY_EMOJI.items()}
+EMOJI_UNHAPPY = {v: k for k, v in UNHAPPY_EMOJI.items()}
