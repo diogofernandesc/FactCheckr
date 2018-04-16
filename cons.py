@@ -1,6 +1,7 @@
 class DB(object):
     NAME = "ip_db"
     TWEET_COLLECTION = "mp_tweets"
+    RELEVANT_TWEET_COLLECTION = "relevant_mp_tweets"
     RETWEET_COLLECTION = "mp_retweets"
     MP_COLLECTION = "mp_data"
     NEWS_ARTICLES = 'news_articles'

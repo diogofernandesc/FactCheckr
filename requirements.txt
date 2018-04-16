@@ -17,3 +17,4 @@ sklearn-crfsuite
 jupyter
 joblib
 langdetect
+emoji
