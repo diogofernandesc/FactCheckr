@@ -210,6 +210,7 @@ class FeatureExtractor(object):
                                                           filter={"author_handle": user["twitter_handle"]},
                                                           projection={"retweet_count":1, "favourites_count":1}
                                                           )
+            cursor_count = tweet_info.count()
             total_retweets = 0
             total_favourites = 0
             for tweet in tweet_info:
@@ -218,17 +219,18 @@ class FeatureExtractor(object):
 
             user_data = self.twitter.api.GetUser(user_id=user["_id"])
             created_at = datetime.strptime(user_data.created_at, '%a %b %d %H:%M:%S +0000 %Y')
+            final_date = datetime(year=2018, month=4, day=15)
+            days_since = (final_date - created_at).days
             timestamp = calendar.timegm(created_at.timetuple())
 
             if user_data.status:
                 doc = {
                     MP.IS_VERIFIED: user_data.verified,
                     MP.FRIENDS_COUNT: user_data.friends_count,
-                    MP.AVERAGE_NO_FAVOURITES: total_favourites / len(tweet_info),
-                    MP.AVERAGE_NO_RETWEETS: total_retweets / len(tweet_info),
+                    MP.AVERAGE_NO_FAVOURITES: total_favourites / cursor_count,
+                    MP.AVERAGE_NO_RETWEETS: total_retweets / cursor_count,
                     MP.NON_EMPTY_DESCRIPTION: len(user_data.description) > 0,
-
-
+                    MP.ACCOUNT_DAYS: days_since
                 }
                 print user_data
 
@@ -242,8 +244,8 @@ class FeatureExtractor(object):
 
 if __name__ == "__main__":
     ft = FeatureExtractor()
-    ft.get_top_websites()
+    # ft.get_top_websites()
     # tweets = ft.db_connection.find_document(collection=DB.RELEVANT_TWEET_COLLECTION, filter={})
-    # users = ft.db_connection.find_document(collection=DB.MP_COLLECTION, filter={})
-    # ft.get_user_features(users=users)
+    users = ft.db_connection.find_document(collection=DB.MP_COLLECTION, filter={})
+    ft.get_user_features(users=users)
     # ft.get_tweet_features(tweets=tweets)

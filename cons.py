@@ -90,6 +90,7 @@ class MP(object):
     AVERAGE_NO_RETWEETS = "average_no_retweets"
     AVERAGE_NO_FAVOURITES = "average_no_favourites"
     NON_EMPTY_DESCRIPTION = "non_empty_description"
+    ACCOUNT_DAYS = "account_days"
 
 
 class DOMAIN(object):

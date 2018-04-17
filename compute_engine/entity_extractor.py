@@ -30,7 +30,7 @@ class EntityExtractor(TweetHandler):
         super(EntityExtractor, self).__init__()
         self.nlu = NaturalLanguageUnderstandingV1(version='2017-02-27',
                                                   username=os.getenv('IBM_USER'), password=os.getenv('IBM_PASS'))
-        self.rosette = API(user_key=os.getenv("ROSETTE_API_KEY"))
+        self.rosette = API(user_key="331743f71a335b14c1c7a9f5498e65b1")
         # self.twitter_ner = TwitterNER()
 
     def get_clean(self, filter={}, limit=4000, tweet=None, collection=DB.TWEET_COLLECTION):
@@ -73,21 +73,34 @@ class EntityExtractor(TweetHandler):
         params["genre"] = "social-media"
 
         extracted_entities = []
+        try:
+            entities = self.rosette.entities(params)
+            for entity in entities['entities']:
+                doc = {
+                    "entity": entity['mention'].lower(),
+                    "type": entity["type"],
+                }
+                if "confidence" in entity:
+                    doc["certainty"] = entity["confidence"]
+                    extracted_entities.append(doc)
 
-        entities = self.rosette.entities(params)
-        for entity in entities['entities']:
-            doc = {
-                "entity": entity['mention'].lower(),
-                "type": entity["type"],
-            }
-            if "confidence" in entity:
-                doc["certainty"] = entity["confidence"]
+                elif "linkingConfidence" in entity:
+                    doc["certainty"] = entity["linkingConfidence"]
+                    extracted_entities.append(doc)
 
-            elif "linkingConfidence" in entity:
-                doc["certainty"] = entity["linkingConfidence"]
+            return extracted_entities
+        except RosetteException as exception:
+            warns = ['meaningful', 'Language']
+            # if ['meaningful', 'Language'] not in exception.message:
+            if not any(warn in exception.message for warn in warns):
+                raise RosetteException(status=exception.status,
+                                       message=exception.message,
+                                       response_message=exception.response_message)
 
-            extracted_entities.append(doc)
-        return extracted_entities
+
+            else:
+                return []
+
 
 
     def analyse_ner(self, tweet):
@@ -121,7 +134,9 @@ class EntityExtractor(TweetHandler):
         #                                          {"created_at_epoch": {"$lt": 1523491200}},
         #                                          {"$or": [{"keywords": None}, {"entities": None}]}]})
 
-        tweets = self.get_clean(collection=collection, filter={"keywords": {"$exists": True}})
+        tweets = self.get_clean(collection=collection, filter={"$and": [{"keywords.certainty": {"$exists": False}},
+                                                                        # 12th march
+                                                                        {"created_at_epoch": {"$gt": 1520812800}}]})
         bulk_op = self.db_connection.start_bulk_upsert(collection=DB.RELEVANT_TWEET_COLLECTION)
 
         count = 0
@@ -160,7 +175,7 @@ class EntityExtractor(TweetHandler):
                         for existing_entity in entities:
                             if existing_entity['entity'] == entity['text'].lower():
                                 existing_entity['entity'] = existing_entity['entity'].title()
-                                
+
                                 existing_entity['certainty'] = (existing_entity['certainty'] + entity['relevance']) / 2
                                 updated_entity = True
 
@@ -193,6 +208,7 @@ class EntityExtractor(TweetHandler):
         except RosetteException as exception:
             logger.warn("Rossete API exception: %s" % exception)
             self.db_connection.end_bulk_upsert(bulk_op=bulk_op)
+
 
 def main():
     while True:
