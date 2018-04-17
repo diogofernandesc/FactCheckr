@@ -1,13 +1,20 @@
 # coding=utf-8
 from __future__ import unicode_literals
+
+import calendar
 import os
 import re
 import nltk
 import emoji
 import logging
 from datetime import datetime
+
+import requests
+from bs4 import BeautifulSoup
+
 from db_engine import DBConnection
-from cons import DB, EMOJI_HAPPY, EMOJI_UNHAPPY
+from ingest_engine.twitter_ingest import Twitter
+from cons import DB, EMOJI_HAPPY, EMOJI_UNHAPPY, CREDS, MP, DOMAIN
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from watson_developer_cloud import NaturalLanguageUnderstandingV1
 from watson_developer_cloud.natural_language_understanding_v1 import Features, SentimentOptions
@@ -16,12 +23,36 @@ from watson_developer_cloud.watson_service import WatsonApiException
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 logger = logging.getLogger(__name__)
 
+
 class FeatureExtractor(object):
     def __init__(self):
         self.db_connection = DBConnection()
         self.sid = SentimentIntensityAnalyzer()
         self.nlu = NaturalLanguageUnderstandingV1(version='2017-02-27',
                                                   username=os.getenv('IBM_USER'), password=os.getenv('IBM_PASS'))
+        self.twitter = Twitter(os.environ.get(CREDS.TWITTER_KEY),
+                                  os.environ.get(CREDS.TWITTER_SECRET),
+                                  os.environ.get(CREDS.TWITTER_TOKEN),
+                                  os.environ.get(CREDS.TWITTER_TOKEN_SECRET),
+                                  self.db_connection)
+        self.session = requests.session()
+
+    def get_top_websites(self):
+        domains_to_insert = []
+        rank = 0
+        with open("top_news_domains", "rb") as f:
+            for line in f:
+                line = line.decode("utf8").strip()
+                if "Website" in line:
+                    rank += 1
+                    domain_info = {
+                        DOMAIN.URL: line.split(" ")[1],
+                        DOMAIN.RANK: rank
+                    }
+                    domains_to_insert.append(domain_info)
+
+        f.close()
+        self.db_connection.bulk_insert(data=domains_to_insert, collection=DB.TOP_NEWS_DOMAINS)
 
     def get_tweet_features(self, tweets):
         '''
@@ -38,9 +69,9 @@ class FeatureExtractor(object):
         - Contains unhappy emoticon
         - Contains pronouns
         - No.of URLS
-        - Contains popular domain top 100
-        - Contains popular domain top 1000
-        - Contains popular domain top 10000
+        - Contains popular domain top 10
+        - Contains popular domain top 30
+        - Contains popular domain top 50
         - Mentions user
         - Contains hashtag
         - Contains stock symbol e.g. $GOOGL
@@ -167,17 +198,52 @@ class FeatureExtractor(object):
         - Number of followees
         - Is verified (1 if verified)
         - Has non empty description
-        - Has homepage URL
         - Average number of retweets
         - Average number of favourites
-        
+
         :param users:
         :return:
         '''
 
+        for user in users:
+            tweet_info = self.db_connection.find_document(collection=DB.RELEVANT_TWEET_COLLECTION,
+                                                          filter={"author_handle": user["twitter_handle"]},
+                                                          projection={"retweet_count":1, "favourites_count":1}
+                                                          )
+            total_retweets = 0
+            total_favourites = 0
+            for tweet in tweet_info:
+                total_favourites += tweet["favourites_count"]
+                total_retweets += tweet["retweet_count"]
+
+            user_data = self.twitter.api.GetUser(user_id=user["_id"])
+            created_at = datetime.strptime(user_data.created_at, '%a %b %d %H:%M:%S +0000 %Y')
+            timestamp = calendar.timegm(created_at.timetuple())
+
+            if user_data.status:
+                doc = {
+                    MP.IS_VERIFIED: user_data.verified,
+                    MP.FRIENDS_COUNT: user_data.friends_count,
+                    MP.AVERAGE_NO_FAVOURITES: total_favourites / len(tweet_info),
+                    MP.AVERAGE_NO_RETWEETS: total_retweets / len(tweet_info),
+                    MP.NON_EMPTY_DESCRIPTION: len(user_data.description) > 0,
+
+
+                }
+                print user_data
+
+    def get_topic_features(self, topics):
+        '''
+        Extract features for a given tweet
+        :param topics:
+        :return:
+        '''
 
 
 if __name__ == "__main__":
     ft = FeatureExtractor()
-    tweets = ft.db_connection.find_document(collection=DB.RELEVANT_TWEET_COLLECTION, filter={})
-    ft.get_tweet_features(tweets=tweets)
+    ft.get_top_websites()
+    # tweets = ft.db_connection.find_document(collection=DB.RELEVANT_TWEET_COLLECTION, filter={})
+    # users = ft.db_connection.find_document(collection=DB.MP_COLLECTION, filter={})
+    # ft.get_user_features(users=users)
+    # ft.get_tweet_features(tweets=tweets)

@@ -9,7 +9,7 @@ from watson_developer_cloud.natural_language_understanding_v1 import Features, K
 from watson_developer_cloud.watson_service import WatsonApiException
 import os
 from db_engine import DBConnection
-from cons import DB
+from cons import DB, TWEET
 import re
 from tweet_handler import TweetHandler
 from nltk.corpus import stopwords
@@ -73,19 +73,22 @@ class EntityExtractor(TweetHandler):
         params["genre"] = "social-media"
 
         extracted_entities = []
-        try:
-            entities = self.rosette.entities(params)
-            for entity in entities['entities']:
-                extracted_entities.append({
-                    "entity": entity['mention'],
-                    "type": entity["type"]
 
-                })
-            return extracted_entities
+        entities = self.rosette.entities(params)
+        for entity in entities['entities']:
+            doc = {
+                "entity": entity['mention'].lower(),
+                "type": entity["type"],
+            }
+            if "confidence" in entity:
+                doc["certainty"] = entity["confidence"]
 
-        except RosetteException as exception:
-            logger.warn("Rossete API exception: %s" % exception)
-            return []
+            elif "linkingConfidence" in entity:
+                doc["certainty"] = entity["linkingConfidence"]
+
+            extracted_entities.append(doc)
+        return extracted_entities
+
 
     def analyse_ner(self, tweet):
         tokens = tokenizeRawTweetText(tweet)
@@ -96,24 +99,19 @@ class EntityExtractor(TweetHandler):
             index2 = entity[1]
             en_type = entity[2]
             entities.append({
-                "entity": " ".join(tokens[index1:index2]),
+                "entity": " ".join(tokens[index1:index2]).lower(),
                 "type": en_type
             })
         return entities
-        # [(3, 4, 'LOCATION'), (11, 12, 'LOCATION')]
-        # >> > " ".join(tokens[3:4])
-        # 'Chicago'
-        # >> > " ".join(tokens[11:12])
-        # 'Florida'
 
-    def analyse(self, since_epoch, retweets=False):
+    def analyse(self, retweets=False):
         """
         :param since_epoch: timestamp from which to collect tweets
         :param retweets: Analyse recent tweets or not, default is no
         Extract keywords and entities from tweets
         :return:
         """
-        collection = DB.TWEET_COLLECTION
+        collection = DB.RELEVANT_TWEET_COLLECTION
         if retweets:
             collection = DB.RETWEET_COLLECTION
 
@@ -123,55 +121,85 @@ class EntityExtractor(TweetHandler):
         #                                          {"created_at_epoch": {"$lt": 1523491200}},
         #                                          {"$or": [{"keywords": None}, {"entities": None}]}]})
 
-        tweets = self.get_clean(collection=collection,
-                                filter={"$and": [{"created_at_epoch": {"$gt": since_epoch}},
-                                                 {"created_at_epoch": {"$lt": 1523491200}},
-                                                 ]})
+        tweets = self.get_clean(collection=collection, filter={"keywords": {"$exists": True}})
+        bulk_op = self.db_connection.start_bulk_upsert(collection=DB.RELEVANT_TWEET_COLLECTION)
 
         count = 0
-        
-        # Tweets is a list of tuples=(tweet_id, tweet_text)
-        for tweet in tweets:
-            keywords = []
-            entities = []
-            try:
-                response = self.nlu.analyze(text=tweet[1], features=Features(keywords=KeywordsOptions(),
-                                                                             entities=EntitiesOptions()))
-            except WatsonApiException:
-                response = []
+        try:
+            # Tweets is a list of tuples=(tweet_id, tweet_text)
+            for tweet in tweets:
+                keywords = []
+                entities = []
+                try:
+                    response = self.nlu.analyze(text=tweet[1], features=Features(keywords=KeywordsOptions(),
+                                                                                 entities=EntitiesOptions()))
+                except WatsonApiException:
+                    response = []
 
-            # ner_entities = self.analyse_ner(tweet=tweet[1])
-            rosette_entities = self.analyse_rosette(tweet=tweet[1])
-            entities = entities + rosette_entities
+                # ner_entities = self.analyse_ner(tweet=tweet[1])
+                rosette_entities = self.analyse_rosette(tweet=tweet[1])
+                entities = entities + rosette_entities
 
-            if response:
-                for keyword in response['keywords']:
-                    if " " in keyword['text'] and keyword['relevance'] < 0.4:
-                        keywords = keywords + (keyword['text'].split())
-                    else:
-                        keywords.append(keyword['text'])
+                if response:
+                    for keyword in response['keywords']:
+                        if " " in keyword['text'] and keyword['relevance'] < 0.4:
+                            keywords.append({
+                                "keyword": " ".join(keyword['text'].split()),
+                                "certainty": keyword['relevance']
+                            })
+                            # keywords = keywords + (keyword['text'].split())
+                        else:
+                            keywords.append({
+                                "keyword": keyword['text'],
+                                "certainty": keyword['relevance']
+                            })
+                            # keywords.append(keyword['text'])
 
-                for entity in response['entities']:
-                    entities.append({
-                        "entity": entity['text'],
-                        "type": entity["type"]
-                    })
+                    for entity in response['entities']:
+                        updated_entity = False
+                        for existing_entity in entities:
+                            if existing_entity['entity'] == entity['text'].lower():
+                                existing_entity['entity'] = existing_entity['entity'].title()
+                                
+                                existing_entity['certainty'] = (existing_entity['certainty'] + entity['relevance']) / 2
+                                updated_entity = True
 
-            result_tweet = self.db_connection.find_and_update(collection=collection,
-                                                              query={"_id": tweet[0]},
-                                                              update={"$set": {"keywords": keywords,
-                                                                               "entities": entities}})
+                        if not updated_entity:
+                            entities.append({
+                                "entity": entity['text'],
+                                "type": entity["type"],
+                                "certainty": entity['relevance']
+                            })
 
-            count += 1
-            if count % 100 == 0:
-                logger.info("Extracted entities and keywords for %s tweets" % count)
+                        # Check there is not already an entity in the list of dicts
+                        # if any(entity_data['entity'] == entity['text'].lower() for entity_data in entities):
+                        #     entity = entity['text'].title()
+                        #     entity_certainty =
+                        #
 
+                doc = {
+                    TWEET.ENTITIES: entities,
+                    TWEET.KEYWORDS: keywords
+                }
+
+                self.db_connection.add_to_bulk_upsert(query={"_id": tweet[0]}, data=doc, bulk_op=bulk_op)
+
+                count += 1
+                if count % 100 == 0:
+                    logger.info("Extracted entities and keywords for %s tweets" % count)
+
+            self.db_connection.end_bulk_upsert(bulk_op=bulk_op)
+
+        except RosetteException as exception:
+            logger.warn("Rossete API exception: %s" % exception)
+            self.db_connection.end_bulk_upsert(bulk_op=bulk_op)
 
 def main():
     while True:
         # 1514764800 = 1st of January 2018 00:00:00
-        ext.analyse(since_epoch=1520812800) #12th march 2018
-        ext.analyse(since_epoch=1514764800, retweets=True)
+        # ext.analyse(since_epoch=1520812800) #12th march 2018
+        # ext.analyse(since_epoch=1514764800, retweets=True)
+        ext.analyse()
 
         logger.info("Now sleeping entity/keyword extractor")
         time.sleep(60 * 60 * 26)  # Check every 26 hours (after tweet ingest)

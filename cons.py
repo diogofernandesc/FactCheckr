@@ -8,6 +8,7 @@ class DB(object):
     SOURCES_COLLECTION = "news_sources"
     TWITTER_TRENDS = "twitter_trends"
     WIKI_TRENDS = "wiki_trends"
+    TOP_NEWS_DOMAINS = "top_news_domains"
 
 
 class NEWS_ARTICLE(object):
@@ -78,13 +79,23 @@ class MP(object):
     TWITTER_HANDLE = "twitter_handle"
     DESCRIPTION = "description"
     FOLLOWERS_COUNT = "followers_count"
+    FRIENDS_COUNT = "friends_count"
     PARTY = "party"
     CONSTITUENCY = "constituency"
     TWEET_COUNT = "tweet_count"
     NAME = "name"
     TOPICS_OF_INTEREST = "topics_of_interest"
     TWEETS_COLLECTED = "tweets_collected"
+    IS_VERIFIED = "is_verified"
+    AVERAGE_NO_RETWEETS = "average_no_retweets"
+    AVERAGE_NO_FAVOURITES = "average_no_favourites"
+    NON_EMPTY_DESCRIPTION = "non_empty_description"
 
+
+class DOMAIN(object):
+    URL = "url"
+    RANK = "rank"
+    NAME = "name"
 
 class WOEIDS(object):
     UK = 23424975
@@ -114,6 +125,8 @@ class TWEET(object):
     CREATED_AT = "created_at"
     CREATED_AT_EPOCH = "created_at_epoch"
     LINKS = "links"
+    KEYWORDS = "keywords"
+    ENTITIES = "entities"
 
 
 class CREDS(object):
