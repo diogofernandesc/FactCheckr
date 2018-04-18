@@ -29,8 +29,8 @@ class EntityExtractor(TweetHandler):
     def __init__(self):
         super(EntityExtractor, self).__init__()
         self.nlu = NaturalLanguageUnderstandingV1(version='2017-02-27',
-                                                  username=os.getenv('IBM_USER'), password=os.getenv('IBM_PASS'))
-        self.rosette = API(user_key="331743f71a335b14c1c7a9f5498e65b1")
+                                                  username="b90a4616-36a2-447a-941f-256419b8f3e4", password="t0BCpLI8fzSA")
+        # self.rosette = API(user_key="3d4b3b83a6fc30e3a63f6e4338456085")
         # self.twitter_ner = TwitterNER()
 
     def get_clean(self, filter={}, limit=4000, tweet=None, collection=DB.TWEET_COLLECTION):
@@ -101,8 +101,6 @@ class EntityExtractor(TweetHandler):
             else:
                 return []
 
-
-
     def analyse_ner(self, tweet):
         tokens = tokenizeRawTweetText(tweet)
         entity_info = self.twitter_ner.get_entities(tokens)
@@ -134,12 +132,21 @@ class EntityExtractor(TweetHandler):
         #                                          {"created_at_epoch": {"$lt": 1523491200}},
         #                                          {"$or": [{"keywords": None}, {"entities": None}]}]})
 
-        tweets = self.get_clean(collection=collection, filter={"$and": [{"keywords.certainty": {"$exists": False}},
+        # tweets = self.get_clean(collection=collection, filter={"$and": [{"keywords.certainty": {"$exists": False}},
+        #                                                                 # 12th march
+        #                                                                 # 1514764800
+        #                                                                 {"created_at_epoch": {"$gt": 1514764800}},
+        #                                                                 # {"created_at_epoch": {"$gt": 1520812800}},
+        #                                                                 {"created_at_epoch": {"$lt": 1520812800}}]})
+
+        tweets = self.get_clean(collection=collection, filter={"keywords.certainty": {"$exists": False}})
                                                                         # 12th march
-                                                                        {"created_at_epoch": {"$gt": 1520812800}}]})
+                                                                        # 1514764800
+
         bulk_op = self.db_connection.start_bulk_upsert(collection=DB.RELEVANT_TWEET_COLLECTION)
 
         count = 0
+        bulk_count = 0
         try:
             # Tweets is a list of tuples=(tweet_id, tweet_text)
             for tweet in tweets:
@@ -148,12 +155,13 @@ class EntityExtractor(TweetHandler):
                 try:
                     response = self.nlu.analyze(text=tweet[1], features=Features(keywords=KeywordsOptions(),
                                                                                  entities=EntitiesOptions()))
-                except WatsonApiException:
+                except WatsonApiException as e:
+                    logger.warn("Watson API exception: %s" % e)
                     response = []
 
-                # ner_entities = self.analyse_ner(tweet=tweet[1])
-                rosette_entities = self.analyse_rosette(tweet=tweet[1])
-                entities = entities + rosette_entities
+                # # ner_entities = self.analyse_ner(tweet=tweet[1])
+                # rosette_entities = self.analyse_rosette(tweet=tweet[1])
+                # entities = entities + rosette_entities
 
                 if response:
                     for keyword in response['keywords']:
@@ -196,14 +204,16 @@ class EntityExtractor(TweetHandler):
                     TWEET.ENTITIES: entities,
                     TWEET.KEYWORDS: keywords
                 }
-
                 self.db_connection.add_to_bulk_upsert(query={"_id": tweet[0]}, data=doc, bulk_op=bulk_op)
+                bulk_count += 1
 
-                count += 1
-                if count % 100 == 0:
-                    logger.info("Extracted entities and keywords for %s tweets" % count)
+                if bulk_count % 100 == 0:
+                    logger.info("Insert bulk data for entity extraction: %s" % bulk_count)
+                    self.db_connection.end_bulk_upsert(bulk_op=bulk_op)
+                    bulk_op = self.db_connection.start_bulk_upsert(collection=DB.RELEVANT_TWEET_COLLECTION)
 
-            self.db_connection.end_bulk_upsert(bulk_op=bulk_op)
+            if bulk_count % 100 != 0:
+                self.db_connection.end_bulk_upsert(bulk_op=bulk_op)
 
         except RosetteException as exception:
             logger.warn("Rossete API exception: %s" % exception)

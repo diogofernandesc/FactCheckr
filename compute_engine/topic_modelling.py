@@ -115,109 +115,203 @@
 #
 
 
+
 import os
+from collections import Counter
+
+from gensim.corpora import Dictionary
+from nltk.corpus import stopwords
+
 from db_engine import DBConnection
 from cons import DB
 import re
 from nltk.tokenize import RegexpTokenizer
 from nltk.stem.wordnet import WordNetLemmatizer
 from gensim.models import LdaModel, Phrases
-from gensim.corpora import Dictionary
 from tweet_handler import TweetHandler
+from gensim import corpora, models, similarities
+from nltk.tokenize import word_tokenize
 
 
-class TopicModelling(TweetHandler):
+# class TopicModelling(TweetHandler):
+#     def __init__(self):
+#         self.db_connection = DBConnection()
+#         self.tweets = self.get_clean(filter={"author_id":117777690})
+#         self.tweets = self.tokenize(self.tweets)
+#         self.tweets = self.lemmatize(self.tweets)
+#         self.bigrams(self.tweets)
+#         self.vectorize(self.tweets)
+#         self.train()
+#
+#     def tokenize(self, tweets):
+#         """
+#         Tokenize tweets for computation
+#         :return: Tokenized tweet list
+#         """
+#         # Split the documents into tokens.
+#         tokenizer = RegexpTokenizer(r'\w+')
+#         for idx in range(len(tweets)):
+#             tweets[idx] = tweets[idx].lower()  # Convert to lowercase.
+#             tweets[idx] = tokenizer.tokenize(tweets[idx])  # Split into words.
+#
+#         # Remove numbers, but not words that contain numbers.
+#         docs = [[token for token in doc if not token.isnumeric()] for doc in tweets]
+#
+#         # Remove words that are only one character.
+#         return [[token for token in doc if len(token) > 1] for doc in docs]
+#
+#     def lemmatize(self, tweets):
+#         """
+#         Lemmatize tweets
+#         :param tweets: tweets to lemmatize
+#         :return:
+#         """
+#         lemmatizer = WordNetLemmatizer()
+#         return [[lemmatizer.lemmatize(token) for token in doc] for doc in tweets]
+#
+#     def bigrams(self, tweets):
+#         """
+#         Compute bigrams
+#
+#         :param tweets:
+#         :return:
+#         """
+#         # Add bigrams and trigrams to docs (only ones that appear 20 times or more).
+#         bigram = Phrases(tweets, min_count=20)
+#         for idx in range(len(tweets)):
+#             for token in bigram[tweets[idx]]:
+#                 if '_' in token:
+#                     # Token is a bigram, add to document.
+#                     self.tweets[idx].append(token)
+#
+#     def vectorize(self, tweets):
+#         """
+#         Remove rare and common words and vectorize tweets
+#         Remove words that appear in less than 20 documents or in more than 50% of the documents.
+#         :param tweets:
+#         :return:
+#         """
+#         self.dictionary = Dictionary(tweets)
+#         self.dictionary.filter_extremes(no_below=10, no_above=0.5)
+#         self.corpus = [self.dictionary.doc2bow(tweet) for tweet in tweets]
+#
+#     def train(self):
+#         """
+#         Train LDA model for tweets topic modelling
+#         :param tweets:
+#         :return:
+#         """
+#         # Set training parameters.
+#         num_topics = 5
+#         chunksize = 2000
+#         passes = 50
+#         iterations = 400
+#         eval_every = None  # Don't evaluate model perplexity, takes too much time.
+#
+#         # Make a index to word dictionary.
+#         temp = self.dictionary[0]
+#         id2word = self.dictionary.id2token
+#         self.model = LdaModel(corpus=self.corpus, id2word=id2word, chunksize=chunksize,
+#                               alpha='auto', eta='auto', iterations=iterations, num_topics=num_topics,
+#                               passes=passes, eval_every=eval_every)
+#
+#     def get_top_topics(self):
+#         """
+#         Get top topics for an MP
+#         :return:
+#         """
+#         top_topics = self.model.top_topics(self.corpus, topn=5)
+#         return top_topics
+
+
+
+
+
+class TopicModel(object):
     def __init__(self):
         self.db_connection = DBConnection()
-        self.tweets = self.get_clean()
-        self.tweets = self.tokenize(self.tweets)
-        self.tweets = self.lemmatize(self.tweets)
-        self.bigrams(self.tweets)
-        self.vectorize(self.tweets)
-        self.train()
 
-    def tokenize(self, tweets):
-        """
-        Tokenize tweets for computation
-        :return: Tokenized tweet list
-        """
-        # Split the documents into tokens.
-        tokenizer = RegexpTokenizer(r'\w+')
-        for idx in range(len(tweets)):
-            tweets[idx] = tweets[idx].lower()  # Convert to lowercase.
-            tweets[idx] = tokenizer.tokenize(tweets[idx])  # Split into words.
+    def clean_tweet(self, tweet):
+        regex_remove = "(@[A-Za-z0-9]+)|([^0-9A-Za-z \t])|&amp;|amp|(\w+:\/\/\S+)|^RT|http.+?"
+        tweet_text = re.sub(regex_remove, '', tweet["text"]).strip()
+        tweet_id = tweet["_id"]
 
-        # Remove numbers, but not words that contain numbers.
-        docs = [[token for token in doc if not token.isnumeric()] for doc in tweets]
+        stopword_list = []
+        stopword_file = open('stopwords.txt', 'r')
+        for line in stopword_file:
+            stopword_list.append(line.strip())
+        stopword_list = stopword_list + stopwords.words('english')
+        stop_words = set(stopword_list)
+        tweet_text = " ".join(word.lower() for word in tweet_text.split() if word.lower() not in stop_words)
+        tweet["text"] = tweet_text
+        return tweet
 
-        # Remove words that are only one character.
-        return [[token for token in doc if len(token) > 1] for doc in docs]
+    def get_final_topics(self, topics):
+        kw_list = []
+        for topic_kws in topics:
+            topic_kws = re.findall('"([^"]*)"', topic_kws[1])
+            kw_list = kw_list + topic_kws
+            # clean_topics.append(clean_topics)
+        top_kws = [kw for kw, kw_count in Counter(kw_list).most_common(30)]
+        print top_kws
+            # pass
 
-    def lemmatize(self, tweets):
-        """
-        Lemmatize tweets
-        :param tweets: tweets to lemmatize
+    def model(self, mp_id):
+        '''
+        Topic model by MP
         :return:
-        """
-        lemmatizer = WordNetLemmatizer()
-        return [[lemmatizer.lemmatize(token) for token in doc] for doc in tweets]
+        '''
+        tweet_docs = []
+        tweets = self.db_connection.find_document(collection=DB.RELEVANT_TWEET_COLLECTION,
+                                                  filter={"author_id": mp_id}, projection={"text": 1})
 
-    def bigrams(self, tweets):
-        """
-        Compute bigrams
+        for tweet in tweets:
+            tweet_docs.append(self.clean_tweet(tweet))
 
-        :param tweets:
-        :return:
-        """
-        # Add bigrams and trigrams to docs (only ones that appear 20 times or more).
-        bigram = Phrases(tweets, min_count=20)
-        for idx in range(len(tweets)):
-            for token in bigram[tweets[idx]]:
-                if '_' in token:
-                    # Token is a bigram, add to document.
-                    self.tweets[idx].append(token)
 
-    def vectorize(self, tweets):
-        """
-        Remove rare and common words and vectorize tweets
-        Remove words that appear in less than 20 documents or in more than 50% of the documents.
-        :param tweets:
-        :return:
-        """
-        self.dictionary = Dictionary(tweets)
-        self.dictionary.filter_extremes(no_below=10, no_above=0.5)
-        self.corpus = [self.dictionary.doc2bow(tweet) for tweet in tweets]
+        # dictionary = gensim.corpora.Dictionary(gen_docs)
+        # corpus = [dictionary.doc2bow(gen_doc) for gen_doc in gen_docs]
+        # tf_idf = gensim.models.TfidfModel(corpus)
 
-    def train(self):
-        """
-        Train LDA model for tweets topic modelling
-        :param tweets:
-        :return:
-        """
-        # Set training parameters.
-        num_topics = 5
-        chunksize = 2000
-        passes = 50
-        iterations = 400
-        eval_every = None  # Don't evaluate model perplexity, takes too much time.
+        gen_docs = [[w.lower() for w in word_tokenize(tweet['text'].lower())] for tweet in tweet_docs]
+        dictionary = corpora.Dictionary(gen_docs)
+        # dictionary.save(os.path.join(TEMP_FOLDER, 'elon.dict'))  # store the dictionary, for future reference
 
-        # Make a index to word dictionary.
-        temp = self.dictionary[0]
-        id2word = self.dictionary.id2token
-        self.model = LdaModel(corpus=self.corpus, id2word=id2word, chunksize=chunksize,
-                              alpha='auto', eta='auto', iterations=iterations, num_topics=num_topics,
-                              passes=passes, eval_every=eval_every)
+        corpus = [dictionary.doc2bow(gen_doc) for gen_doc in gen_docs]
+        # corpora.MmCorpus.serialize()
+        # corpora.MmCorpus.serialize(os.path.join(TEMP_FOLDER, 'elon.mm'), corpus)  # store to disk, for later use
 
-    def get_top_topics(self):
-        """
-        Get top topics for an MP
-        :return:
-        """
-        top_topics = self.model.top_topics(self.corpus, topn=5)
-        return top_topics
+        tfidf = models.TfidfModel(corpus)  # step 1 -- initialize a model
+        corpus_tfidf = tfidf[corpus]
+
+        total_topics = 5
+
+        total_topic_aggregation = 5
+        i = 0
+        possible_topics = []
+        while i < total_topic_aggregation:
+            possible_topics = possible_topics + models.LdaModel(corpus,
+                                                                id2word=dictionary,
+                                                                num_topics=total_topics).show_topics(total_topics, 5)
+            i += 1
+
+        self.get_final_topics(topics=possible_topics)
+
+        # topics1 = models.LdaModel(corpus, id2word=dictionary, num_topics=total_topics)
+        # topics2 =
+        # lda2 =models.LdaModel(corpus, id2word=dictionary, num_topics=total_topics)
+        # corpus_lda = lda[corpus_tfidf]  # create a double wrapper over the original corpus: bow->tfidf->fold-in-lsi
+        # topics =  lda.show_topics(total_topics, 5)
+        # self.topics_to_list(topics)
+        # print "----"
+        # print lda2.show_topics(total_topics, 5)
+        # print topics
 
 
 if __name__ == "__main__":
-    topic_modelling = TopicModelling()
-    topics = topic_modelling.get_top_topics()
-    print topics
+    # topic_modelling = TopicModelling()
+    tm = TopicModel()
+    tm.model(mp_id=117777690)
+    # topics = topic_modelling.get_top_topics()
+    # print topics
+

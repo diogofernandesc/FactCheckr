@@ -159,6 +159,6 @@ class CrowdFlower(object):
 
 cf = CrowdFlower()
 # cf.process_job()
-# cf.get_judgements(job_id=1256982)
-cf.get_fact_opinion(job_id=1257130)
+cf.get_judgements(job_id=1257130)
+# cf.get_fact_opinion(job_id=1257130)
 
