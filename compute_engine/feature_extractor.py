@@ -208,7 +208,7 @@ class FeatureExtractor(object):
         for user in users:
             tweet_info = self.db_connection.find_document(collection=DB.RELEVANT_TWEET_COLLECTION,
                                                           filter={"author_handle": user["twitter_handle"]},
-                                                          projection={"retweet_count":1, "favourites_count":1}
+                                                          projection={"retweet_count": 1, "favourites_count": 1}
                                                           )
             cursor_count = tweet_info.count()
             total_retweets = 0

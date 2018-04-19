@@ -106,6 +106,9 @@ class DBConnection(object):
         result = self.db[collection].update_one(query, update)
         return result
 
+    def increment_field(self, collection, query, field):
+        result = self.db[collection].update_one(query, update={"$inc": {field: 1}}, upsert=True)
+
     def create_mp(self, data):
         mp_data = self.db.mp_data
         result = mp_data.insert_one(data)

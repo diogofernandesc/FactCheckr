@@ -9,6 +9,7 @@ class DB(object):
     TWITTER_TRENDS = "twitter_trends"
     WIKI_TRENDS = "wiki_trends"
     TOP_NEWS_DOMAINS = "top_news_domains"
+    RELEVANT_TOPICS = "relevant_topics"
 
 
 class NEWS_ARTICLE(object):
@@ -91,6 +92,12 @@ class MP(object):
     AVERAGE_NO_FAVOURITES = "average_no_favourites"
     NON_EMPTY_DESCRIPTION = "non_empty_description"
     ACCOUNT_DAYS = "account_days"
+    TOPICS = "topics"
+
+
+class TOPIC(object):
+    IDENTIFIED_AS_TOPIC = "identified_as_topic" # Number of times it was identified as topic
+
 
 
 class DOMAIN(object):

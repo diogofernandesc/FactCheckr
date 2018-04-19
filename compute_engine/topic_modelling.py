@@ -123,7 +123,7 @@ from gensim.corpora import Dictionary
 from nltk.corpus import stopwords
 
 from db_engine import DBConnection
-from cons import DB
+from cons import DB, MP, TOPIC
 import re
 from nltk.tokenize import RegexpTokenizer
 from nltk.stem.wordnet import WordNetLemmatizer
@@ -248,12 +248,14 @@ class TopicModel(object):
 
     def get_final_topics(self, topics):
         kw_list = []
+        intact_kw_list = []
         for topic_kws in topics:
             topic_kws = re.findall('"([^"]*)"', topic_kws[1])
             kw_list = kw_list + topic_kws
+            intact_kw_list.append(topic_kws)
             # clean_topics.append(clean_topics)
         top_kws = [kw for kw, kw_count in Counter(kw_list).most_common(30)]
-        print top_kws
+        return (top_kws, intact_kw_list)
             # pass
 
     def model(self, mp_id):
@@ -265,53 +267,66 @@ class TopicModel(object):
         tweets = self.db_connection.find_document(collection=DB.RELEVANT_TWEET_COLLECTION,
                                                   filter={"author_id": mp_id}, projection={"text": 1})
 
-        for tweet in tweets:
-            tweet_docs.append(self.clean_tweet(tweet))
+        if tweets.count() > 0:
+            for tweet in tweets:
+                tweet_docs.append(self.clean_tweet(tweet))
 
 
-        # dictionary = gensim.corpora.Dictionary(gen_docs)
-        # corpus = [dictionary.doc2bow(gen_doc) for gen_doc in gen_docs]
-        # tf_idf = gensim.models.TfidfModel(corpus)
+            # dictionary = gensim.corpora.Dictionary(gen_docs)
+            # corpus = [dictionary.doc2bow(gen_doc) for gen_doc in gen_docs]
+            # tf_idf = gensim.models.TfidfModel(corpus)
 
-        gen_docs = [[w.lower() for w in word_tokenize(tweet['text'].lower())] for tweet in tweet_docs]
-        dictionary = corpora.Dictionary(gen_docs)
-        # dictionary.save(os.path.join(TEMP_FOLDER, 'elon.dict'))  # store the dictionary, for future reference
+            gen_docs = [[w.lower() for w in word_tokenize(tweet['text'].lower())] for tweet in tweet_docs]
+            dictionary = corpora.Dictionary(gen_docs)
+            # dictionary.save(os.path.join(TEMP_FOLDER, 'elon.dict'))  # store the dictionary, for future reference
 
-        corpus = [dictionary.doc2bow(gen_doc) for gen_doc in gen_docs]
-        # corpora.MmCorpus.serialize()
-        # corpora.MmCorpus.serialize(os.path.join(TEMP_FOLDER, 'elon.mm'), corpus)  # store to disk, for later use
+            corpus = [dictionary.doc2bow(gen_doc) for gen_doc in gen_docs]
+            # corpora.MmCorpus.serialize()
+            # corpora.MmCorpus.serialize(os.path.join(TEMP_FOLDER, 'elon.mm'), corpus)  # store to disk, for later use
 
-        tfidf = models.TfidfModel(corpus)  # step 1 -- initialize a model
-        corpus_tfidf = tfidf[corpus]
+            tfidf = models.TfidfModel(corpus)  # step 1 -- initialize a model
+            corpus_tfidf = tfidf[corpus]
 
-        total_topics = 5
+            total_topics = 5
 
-        total_topic_aggregation = 5
-        i = 0
-        possible_topics = []
-        while i < total_topic_aggregation:
-            possible_topics = possible_topics + models.LdaModel(corpus,
-                                                                id2word=dictionary,
-                                                                num_topics=total_topics).show_topics(total_topics, 5)
-            i += 1
+            total_topic_aggregation = 2
+            i = 0
+            possible_topics = []
+            while i < total_topic_aggregation:
+                possible_topics = possible_topics + models.LdaModel(corpus,
+                                                                    id2word=dictionary,
+                                                                    num_topics=total_topics).show_topics(total_topics, 5)
+                i += 1
 
-        self.get_final_topics(topics=possible_topics)
+            topic_data = self.get_final_topics(topics=possible_topics)
+            final_topics = []
+            print "Top keywords:  %s " % topic_data[0]
+            for batch in topic_data[1]:
+                print batch
+                print "----"
+                decision = None
+                while decision != "":
+                    decision = raw_input()
+                    if decision:
+                        if decision.lower() not in final_topics:
+                            final_topics.append(decision.lower())
 
-        # topics1 = models.LdaModel(corpus, id2word=dictionary, num_topics=total_topics)
-        # topics2 =
-        # lda2 =models.LdaModel(corpus, id2word=dictionary, num_topics=total_topics)
-        # corpus_lda = lda[corpus_tfidf]  # create a double wrapper over the original corpus: bow->tfidf->fold-in-lsi
-        # topics =  lda.show_topics(total_topics, 5)
-        # self.topics_to_list(topics)
-        # print "----"
-        # print lda2.show_topics(total_topics, 5)
-        # print topics
+            if final_topics:
+                self.db_connection.update_mp(user_id=mp_id, update={MP.TOPICS: final_topics})
+                for final_topic in final_topics:
+                    self.db_connection.increment_field(collection=DB.RELEVANT_TOPICS, query={"name": final_topic},
+                                                       field=TOPIC.IDENTIFIED_AS_TOPIC)
+
 
 
 if __name__ == "__main__":
     # topic_modelling = TopicModelling()
     tm = TopicModel()
-    tm.model(mp_id=117777690)
+    # tm.model(mp_id=117777690)
+    all_mps = tm.db_connection.find_document(collection=DB.MP_COLLECTION, filter={MP.TOPICS: {"$exists": False}},
+                                             projection={"name": 1})
+    for mp in all_mps:
+        tm.model(mp_id=mp["_id"])
     # topics = topic_modelling.get_top_topics()
     # print topics
 
