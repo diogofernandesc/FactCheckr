@@ -160,7 +160,7 @@ class TWEET(object):
     AVERAGE_KEYWORD_CERTAINTY = "avg_keyword_certainty"
     ENTITIES_COUNT = "entities_count"
     KEYWORDS_COUNT = "keywords_count"
-
+    SET_TO_FACTCHECK = "set_to_factcheck"
 
 
 class CREDS(object):

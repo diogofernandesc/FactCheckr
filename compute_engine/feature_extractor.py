@@ -104,13 +104,17 @@ class FeatureExtractor(object):
         :return:
         '''
 
-        top_domains = self.db_connection.find_document(collection=DB.TOP_NEWS_DOMAINS)
         bulk_op = self.db_connection.start_bulk_upsert(collection=DB.RELEVANT_TWEET_COLLECTION)
         for tweet in tweets:
             tweet = {
                 "_id" : 956217250092077056,
                 "retweet_count" : 21,
                 "favourites_count" : 20,
+                "links": [
+                    "https://t.co/QAcTz1HCEh.",
+                    "https://t.co/RDNcqDKPwb",
+                    "http://www.bbc.co.uk/news/uk-43840710"
+                ],
                 "url" : "https://t.co/Tv74ZcbGdR",
                 "text" : "Marvellous news @GregHands. UK Businesses bad should be confident about continuity and stability in the short term and optimistic about the work @tradegovuk are doing to open us up to the world in the longer term https://t.co/c91Vt3bs2Y",
                 "created_at" : "2018-01-24T17:28:52.000+0000",
@@ -228,6 +232,32 @@ class FeatureExtractor(object):
                             if word in negative_file.read().split():
                                 neg_word_count += 1
 
+
+            # Domain extraction
+            top10 = False
+            top30 = False
+            top50 = False
+            for url in tweet[TWEET.LINKS]:
+                url = requests.head(url, allow_redirects=True).url
+                url = url.split("://")[1]
+                if "www" in url:
+                    url = url.split("www.")[1]
+
+                if "/" in url:
+                    url = url.split("/")[0]
+
+                if len(url.split('.')[0]) > 1:
+                    # regexp = re.compile("/.*%s.*/" % url, re.IGNORECASE)
+                    regexp = "/.*%s.*/" % url
+                    match = self.db_connection.find_document(collection=DB.TOP_NEWS_DOMAINS,
+                                                             filter={"url": {"$regex": url}})
+
+                    for domain in match:
+                        rank = domain["rank"]
+                        top10 = rank <= 10
+                        top30 = 11 <= rank <= 30
+                        top50 = 31 <= rank <= 50
+
             # Certainty extraction
             entity_certainty = 0
             keyword_certainty = 0
@@ -236,8 +266,6 @@ class FeatureExtractor(object):
 
             for keyword in tweet[TWEET.KEYWORDS]:
                 keyword_certainty += keyword['certainty']
-
-
 
 
             # Sentiment extraction
@@ -271,7 +299,10 @@ class FeatureExtractor(object):
                 TWEET.AVERAGE_ENTITY_CERTAINTY: entity_certainty / len(tweet[TWEET.ENTITIES]),
                 TWEET.AVERAGE_KEYWORD_CERTAINTY: keyword_certainty / len(tweet[TWEET.KEYWORDS]),
                 TWEET.ENTITIES_COUNT: len(tweet[TWEET.ENTITIES]),
-                TWEET.KEYWORDS_COUNT: len(tweet[TWEET.KEYWORDS])
+                TWEET.KEYWORDS_COUNT: len(tweet[TWEET.KEYWORDS]),
+                TWEET.CONTAINS_DOMAIN_TOP10: top10,
+                TWEET.CONTAINS_DOMAIN_TOP30: top30,
+                TWEET.CONTAINS_DOMAIN_TOP50: top50
 
                 # TWEET.CONTAINS_DOMAIN_TOP10:
             }
@@ -364,7 +395,6 @@ class FeatureExtractor(object):
         :param topics:
         :return:
         '''
-
 
 
 if __name__ == "__main__":
