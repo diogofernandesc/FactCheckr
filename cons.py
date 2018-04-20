@@ -135,6 +135,32 @@ class TWEET(object):
     LINKS = "links"
     KEYWORDS = "keywords"
     ENTITIES = "entities"
+    CHARACTER_COUNT = "character_count"
+    WORD_COUNT = "word_count"
+    CONTAINS_QM = "contains_qm"
+    CONTAINS_EM = "contains_em"
+    CONTAINS_MULTIPLE_MARKS = "contains_multiple_m"
+    FRACTION_CAPITALISED = "frac_capitalised"
+    CONTAINS_HAPPY_EMOJI = "contains_happy_emoji"
+    CONTAINS_SAD_EMOJI = "contains_sad_emoji"
+    CONTAINS_HAPPY_EMOTICON = "contains_happy_emoticon"
+    CONTAINS_SAD_EMOTICON = "contains_sad_emoticon"
+    CONTAINS_PRONOUNS = "contains_pronouns"
+    CONTAINS_DOMAIN_TOP10 = "contains_domain_top10"
+    CONTAINS_DOMAIN_TOP30 = "contains_domain_top30"
+    CONTAINS_DOMAIN_TOP50 = "contains_domain_top50"
+    MENTIONED_USERS = "mentioned_users"
+    MENTIONS_USER = "mentions_user"
+    CONTAINS_STOCK_SYMBOL = "contains_stock_symbol"
+    PUBLISH_WEEKDAY = "publish_weekday"
+    POSITIVE_WORD_COUNT = "positive_word_count"
+    NEGATIVE_WORD_COUNT = "negative_word_count"
+    SENTIMENT_SCORE = "sentiment_score"
+    AVERAGE_ENTITY_CERTAINTY = "avg_entity_certainty"
+    AVERAGE_KEYWORD_CERTAINTY = "avg_keyword_certainty"
+    ENTITIES_COUNT = "entities_count"
+    KEYWORDS_COUNT = "keywords_count"
+
 
 
 class CREDS(object):
@@ -160,6 +186,16 @@ class RELEVANCY_INTERVAL(object):
     WEEK = 'relevancy_week'
     TWO_WEEKS = 'relevancy_2weeks'
     MONTH = 'relevancy_month'
+
+
+class WEEKDAY(object):
+    MONDAY = 1
+    TUESDAY = 2
+    WEDNESDAY = 3
+    THURSDAY = 4
+    FRIDAY = 5
+    SATURDAY = 6
+    SUNDAY = 7
 
 
 HAPPY_EMOJI = {

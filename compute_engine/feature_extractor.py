@@ -1,6 +1,6 @@
 # coding=utf-8
 from __future__ import unicode_literals
-
+from __future__ import division
 import calendar
 import os
 import re
@@ -14,7 +14,7 @@ from bs4 import BeautifulSoup
 
 from db_engine import DBConnection
 from ingest_engine.twitter_ingest import Twitter
-from cons import DB, EMOJI_HAPPY, EMOJI_UNHAPPY, CREDS, MP, DOMAIN
+from cons import DB, EMOJI_HAPPY, EMOJI_UNHAPPY, CREDS, MP, DOMAIN, TWEET, WEEKDAY
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from watson_developer_cloud import NaturalLanguageUnderstandingV1
 from watson_developer_cloud.natural_language_understanding_v1 import Features, SentimentOptions
@@ -29,13 +29,28 @@ class FeatureExtractor(object):
         self.db_connection = DBConnection()
         self.sid = SentimentIntensityAnalyzer()
         self.nlu = NaturalLanguageUnderstandingV1(version='2017-02-27',
-                                                  username=os.getenv('IBM_USER'), password=os.getenv('IBM_PASS'))
+                                                  username="b90a4616-36a2-447a-941f-256419b8f3e4",
+                                                  password="t0BCpLI8fzSA")
+
         self.twitter = Twitter(os.environ.get(CREDS.TWITTER_KEY),
                                   os.environ.get(CREDS.TWITTER_SECRET),
                                   os.environ.get(CREDS.TWITTER_TOKEN),
                                   os.environ.get(CREDS.TWITTER_TOKEN_SECRET),
                                   self.db_connection)
         self.session = requests.session()
+
+    def convert_weekday(self, weekday):
+        week_dict = {
+            "Monday": WEEKDAY.MONDAY,
+            "Tuesday": WEEKDAY.TUESDAY,
+            "Wednesday": WEEKDAY.WEDNESDAY,
+            "Thursday": WEEKDAY.THURSDAY,
+            "Friday": WEEKDAY.FRIDAY,
+            "Saturday": WEEKDAY.SATURDAY,
+            "Sunday": WEEKDAY.SUNDAY
+        }
+
+        return week_dict.get(weekday)
 
     def get_top_websites(self):
         domains_to_insert = []
@@ -62,6 +77,7 @@ class FeatureExtractor(object):
         - Number of words
         - Contains a question mark
         - Contains an exclamation mark
+        - Fraction of capital letters
         - Are there multiple exclamation marks or question marks
         - Contains happy emoji(s)
         - Contains unhappy emoji(s)
@@ -75,11 +91,11 @@ class FeatureExtractor(object):
         - Mentions user
         - Contains hashtag
         - Contains stock symbol e.g. $GOOGL
-        - Day of the week in which tweet was made
+        - Day of the week in which tweet was made: - Monday = 1 ...... Sunday = 7
         - No.of positive words
         - No.of negative words
         - Total final sentiment score
-        - Relevance score from news
+        - Relevance score from news: day, week, 2weeks
         - No.of entities extracted
         - No.of keywords extracted
         - Average certainty of entities extracted
@@ -88,6 +104,8 @@ class FeatureExtractor(object):
         :return:
         '''
 
+        top_domains = self.db_connection.find_document(collection=DB.TOP_NEWS_DOMAINS)
+        bulk_op = self.db_connection.start_bulk_upsert(collection=DB.RELEVANT_TWEET_COLLECTION)
         for tweet in tweets:
             tweet = {
                 "_id" : 956217250092077056,
@@ -102,13 +120,40 @@ class FeatureExtractor(object):
                 "created_at_epoch" : 1516814932,
                 "html" : "<blockquote class=\"twitter-tweet\"><p lang=\"en\" dir=\"ltr\">With the Pound at its highest value since the referendum and the employment rate the highest ever recorded, now is the time to be confident about leaving the Single Market <a href=\"https://t.co/Tv74ZcbGdR\">https://t.co/Tv74ZcbGdR</a> <a href=\"https://twitter.com/ExpressSeries?ref_src=twsrc%5Etfw\">@ExpressSeries</a> <a href=\"https://twitter.com/windsorobserver?ref_src=twsrc%5Etfw\">@windsorobserver</a> <a href=\"https://twitter.com/bracknellnews?ref_src=twsrc%5Etfw\">@bracknellnews</a></p>&mdash; Adam Afriyie (@AdamAfriyie) <a href=\"https://twitter.com/AdamAfriyie/status/956217250092077056?ref_src=twsrc%5Etfw\">January 24, 2018</a></blockquote>\n<script async src=\"https://platform.twitter.com/widgets.js\" charset=\"utf-8\"></script>\n",
                 "entities" : [
-
+                    {
+                        "certainty" : 0.99900001,
+                        "type" : "TITLE",
+                        "entity" : "governor"
+                    },
+                    {
+                        "certainty" : 0.6645000050000001,
+                        "type" : "PERSON",
+                        "entity" : "Virginia"
+                    },
+                    {
+                        "certainty" : 0.2188269,
+                        "type" : "LOCATION",
+                        "entity" : "uk"
+                    },
+                    {
+                        "certainty" : 0.6645000050000001,
+                        "type" : "ORGANIZATION",
+                        "entity" : "Commonwealth Virginia"
+                    }
                 ],
                 "keywords" : [
-                    "Pound value referendum",
-                    "employment rate",
-                    "Single",
-                    "Market"
+                    {
+                        "certainty" : 0.944038,
+                        "keyword" : "Governor Virginia UK"
+                    },
+                    {
+                        "certainty" : 0.873367,
+                        "keyword" : "links Commonwealth Virginia"
+                    },
+                    {
+                        "certainty" : 0.64328,
+                        "keyword" : "Outstanding meeting"
+                    }
                 ],
                 "relevancy_day" : 0.014215469360351562,
                 "relevancy_week" : 0.013840186409652233,
@@ -117,14 +162,16 @@ class FeatureExtractor(object):
             }
 
             text = re.sub(r'http\S+', '', tweet['text']) # Remove links
+            capitalised = sum(1 for c in text if c.isupper())
             text = text.lower()
             timestamp = tweet['created_at_epoch']
             no_chars = len(re.sub(r"\s+", "", text))
             no_words = len(re.findall(r'\w+', text))
+            capitalised = capitalised / no_chars
             contains_qm = "?" in text
             contains_em = "!" in text
             multiple_marks = text.count("?") > 1 or text.count("!") > 1
-            happy_emoji = []
+            # happy_emoji = []
 
             # Pronoun extraction
             tokens = nltk.word_tokenize(text)
@@ -136,8 +183,8 @@ class FeatureExtractor(object):
                     break
 
             # Extracting user mentions
-            result = re.findall("(^|[^@\w])@(\w{1,15})", text)
-
+            user_mentions = re.findall("(^|[^@\w])@(\w{1,15})", text)
+            user_mentions = [mention[1] for mention in user_mentions]
             # Extracting stock symbols
             stock_result = re.findall("$([a-zA-Z0-9]{1,15})", text)
 
@@ -145,7 +192,7 @@ class FeatureExtractor(object):
 
             # Extracting emoticons
             happy_emoticons = """
-            :‑) :)	:-] :] :-3 :3 :-> :> 8-) 8)	:-} :} :o) :c) :^) =] =) :‑D :D	8‑D 8D x‑D xD X‑D XD =D =3 B^D :-)) :'‑) 
+            :‑) :) :-] :] :-3 :3 :-> :> 8-) 8) :-} :} :o) :c) :^) =] =) :‑D :D 8‑D 8D x‑D xD X‑D XD =D =3 B^D :-)) :'‑) 
             :') :‑P :P :‑p :p =p >:P
             """.split()
 
@@ -162,7 +209,7 @@ class FeatureExtractor(object):
 
             # Extracting emojis
             happy_emoji_count = len([c for c in text.split() if c in EMOJI_HAPPY])
-            unhappy_emoji_count = len([c for c in text.split() if c in EMOJI_UNHAPPY])
+            sad_emoji_count = len([c for c in text.split() if c in EMOJI_UNHAPPY])
 
             # Extracting sentiment score and its components
 
@@ -181,12 +228,56 @@ class FeatureExtractor(object):
                             if word in negative_file.read().split():
                                 neg_word_count += 1
 
+            # Certainty extraction
+            entity_certainty = 0
+            keyword_certainty = 0
+            for entity in tweet[TWEET.ENTITIES]:
+                entity_certainty += entity['certainty']
+
+            for keyword in tweet[TWEET.KEYWORDS]:
+                keyword_certainty += keyword['certainty']
+
+
+
+
+            # Sentiment extraction
 
             try:
                 sentiment_response = self.nlu.analyze(text=text, features=Features(sentiment=SentimentOptions()))
                 sentiment_score += sentiment_response['sentiment']['document']['score']
             except WatsonApiException as e:
                 logger.warn(e.message)
+                sentiment_score = 0
+
+            doc = {
+                TWEET.CHARACTER_COUNT: no_chars,
+                TWEET.WORD_COUNT: no_words,
+                TWEET.CONTAINS_QM: contains_qm,
+                TWEET.CONTAINS_EM: contains_em,
+                TWEET.CONTAINS_MULTIPLE_MARKS: multiple_marks,
+                TWEET.FRACTION_CAPITALISED: capitalised,
+                TWEET.CONTAINS_HAPPY_EMOJI: happy_emoji_count > 0,
+                TWEET.CONTAINS_SAD_EMOJI: sad_emoji_count > 0,
+                TWEET.CONTAINS_HAPPY_EMOTICON: len(happy_emoticon_count) > 0,
+                TWEET.CONTAINS_SAD_EMOTICON: len(sad_emoticon_count) > 0,
+                TWEET.CONTAINS_PRONOUNS: has_personal_pronoun,
+                TWEET.MENTIONED_USERS: user_mentions,
+                TWEET.MENTIONS_USER: len(user_mentions) > 0,
+                TWEET.CONTAINS_STOCK_SYMBOL: len(stock_result) > 0,
+                TWEET.PUBLISH_WEEKDAY: self.convert_weekday(day_of_week),
+                TWEET.POSITIVE_WORD_COUNT: pos_word_count,
+                TWEET.NEGATIVE_WORD_COUNT: neg_word_count,
+                TWEET.SENTIMENT_SCORE: sentiment_score,
+                TWEET.AVERAGE_ENTITY_CERTAINTY: entity_certainty / len(tweet[TWEET.ENTITIES]),
+                TWEET.AVERAGE_KEYWORD_CERTAINTY: keyword_certainty / len(tweet[TWEET.KEYWORDS]),
+                TWEET.ENTITIES_COUNT: len(tweet[TWEET.ENTITIES]),
+                TWEET.KEYWORDS_COUNT: len(tweet[TWEET.KEYWORDS])
+
+                # TWEET.CONTAINS_DOMAIN_TOP10:
+            }
+
+            self.db_connection.add_to_bulk_upsert(query={"_id": tweet["_id"]},
+                                                  data=doc, bulk_op=bulk_op)
 
     def get_user_features(self, users):
         '''
@@ -236,16 +327,50 @@ class FeatureExtractor(object):
 
     def get_topic_features(self, topics):
         '''
-        Extract features for a given tweet
+        Extract features for a given topic, including:
+        - amount of tweets
+        - Average length
+        - Fraction containing questioning mark
+        - Fraction containing exclamation mark
+        - Fraction containing multiple question marks/multiple exclamation marks
+        - Fraction containing happy emoticon, sad emoticon, happy emoji, sad emoji
+        - Fraction containing pronouns
+        - Fraction containing 30% of characters uppercased
+        - Fraction containing a URL
+        - Fraction containing a user mention
+        - Fraction containing hashtags
+        - Fraction containing stock symbols
+        - Average sentiment score
+        - Fraction containing positive sentiment score
+        - Fraction containing negative sentiment score
+        - Fraction containing popular domain top 10
+        - Fraction containing popular domain top 30
+        - Fraction containing popular domain top 50
+        - Number of distinct URLs
+        - Fraction containing most visited URL
+        - Number of distinct short URLs
+        - Number of distinct hashtags
+        - Fraction containing most used hashtag
+        - Number of distinct users mentioned
+        - Fraction containing most mentioned user
+        - Number of distinct tweet authors
+        - Fraction of tweets by most frequent author
+        - Author average twitter life
+        - Author average amount of tweets
+        - Author average amount of followers
+        - Author average amount of friends
+        - Fraction of tweets from verified users
+        - Fraction with authors with description
         :param topics:
         :return:
         '''
 
 
+
 if __name__ == "__main__":
     ft = FeatureExtractor()
     # ft.get_top_websites()
-    # tweets = ft.db_connection.find_document(collection=DB.RELEVANT_TWEET_COLLECTION, filter={})
-    users = ft.db_connection.find_document(collection=DB.MP_COLLECTION, filter={})
-    ft.get_user_features(users=users)
-    # ft.get_tweet_features(tweets=tweets)
+    tweets = ft.db_connection.find_document(collection=DB.RELEVANT_TWEET_COLLECTION, filter={})
+    # users = ft.db_connection.find_document(collection=DB.MP_COLLECTION, filter={})
+    # ft.get_user_features(users=users)
+    ft.get_tweet_features(tweets=tweets)
