@@ -14,7 +14,7 @@ class TweetHandler(object):
         :param filter: Filter for selecting tweets to clean
         :return: Clean tweets for a given MP
         """
-        tweets = self.db_connection.find_document(collection=DB.TWEET_COLLECTION,
+        tweets = self.db_connection.find_document(collection=DB.RELEVANT_TWEET_COLLECTION,
                                                   filter=filter,
                                                   projection={"text": 1})
 
