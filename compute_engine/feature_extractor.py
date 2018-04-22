@@ -14,7 +14,7 @@ from datetime import datetime
 import operator
 import requests
 from bs4 import BeautifulSoup
-
+from requests.exceptions import ConnectionError
 from db_engine import DBConnection
 from ingest_engine.twitter_ingest import Twitter
 from cons import DB, EMOJI_HAPPY, EMOJI_UNHAPPY, CREDS, MP, DOMAIN, TWEET, WEEKDAY, TOPIC
@@ -184,25 +184,29 @@ class FeatureExtractor(object):
             top50 = False
             if TWEET.LINKS in tweet:
                 for url in tweet[TWEET.LINKS]:
-                    url = requests.head(url, allow_redirects=True).url
-                    url = url.split("://")[1]
-                    if "www" in url:
-                        url = url.split("www.")[1]
+                    try:
+                        url = requests.head(url, allow_redirects=True).url
+                        url = url.split("://")[1]
+                        if "www" in url:
+                            url = url.split("www.")[1]
 
-                    if "/" in url:
-                        url = url.split("/")[0]
+                        if "/" in url:
+                            url = url.split("/")[0]
 
-                    if len(url.split('.')[0]) > 1:
-                        # regexp = re.compile("/.*%s.*/" % url, re.IGNORECASE)
-                        regexp = "/.*%s.*/" % url
-                        match = self.db_connection.find_document(collection=DB.TOP_NEWS_DOMAINS,
-                                                                 filter={"url": {"$regex": url}})
+                        if len(url.split('.')[0]) > 1:
+                            # regexp = re.compile("/.*%s.*/" % url, re.IGNORECASE)
+                            regexp = "/.*%s.*/" % url
+                            match = self.db_connection.find_document(collection=DB.TOP_NEWS_DOMAINS,
+                                                                     filter={"url": {"$regex": url}})
 
-                        for domain in match:
-                            rank = domain["rank"]
-                            top10 = rank <= 10
-                            top30 = 11 <= rank <= 30
-                            top50 = 31 <= rank <= 50
+                            for domain in match:
+                                rank = domain["rank"]
+                                top10 = rank <= 10
+                                top30 = 11 <= rank <= 30
+                                top50 = 31 <= rank <= 50
+                    except ConnectionError as e:
+                        logger.warn(e)
+
 
             # Certainty extraction
             entity_certainty = 0
