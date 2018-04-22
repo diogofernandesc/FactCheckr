@@ -93,10 +93,49 @@ class MP(object):
     NON_EMPTY_DESCRIPTION = "non_empty_description"
     ACCOUNT_DAYS = "account_days"
     TOPICS = "topics"
+    CREATED_AT = "created_at"
+    CREATED_AT_EPOCH = "created_at_epoch"
 
 
 class TOPIC(object):
     IDENTIFIED_AS_TOPIC = "identified_as_topic" # Number of times it was identified as topic
+    TWEET_COUNT = "tweet_count"
+    TWEET_AVERAGE_LENGTH = "average_length"
+    FRAC_CONTAINING_QM = "frac_containing_qm"
+    FRAC_CONTAINING_EM = "frac_containing_em"
+    FRAC_CONTAINING_MULTIPLE_MARKS = "frac_containing_multiple_marks"
+    FRAC_CONTAINING_HAPPY_EMOTICON = "frac_containing_happy_emoticon"
+    FRAC_CONTAINING_SAD_EMOTICON = "frac_containing_sad_emoticon"
+    FRAC_CONTAINING_HAPPY_EMOJI = "frac_containing_happy_emoji"
+    FRAC_CONTAINING_SAD_EMOJI = "frac_containing_sad_emoji"
+    FRAC_CONTAINING_PRONOUNS = "frac_containing_pronouns"
+    FRAC_CONTAINING_UPPERCASE = "frac_containing_uppercase"
+    FRAC_CONTAINING_URL = "frac_containing_url"
+    FRAC_CONTAINING_USER_MENTION = "frac_containing_user_mention"
+    FRAC_CONTAINING_HASHTAGS = "frac_containing_hashtags"
+    FRAC_CONTAINING_STOCK_SYMBOLS = "frac_containing_stock_symbols"
+    AVERAGE_SENTIMENT_SCORE = "avg_sentiment_score"
+    FRAC_CONTAINING_POSITIVE_SENTIMENT = "frac_containing_positive_sentiment"
+    FRAC_CONTAINING_NEGATIVE_SENTIMENT = "frac_containing_negative_sentiment"
+    FRAC_CONTAINING_DOMAIN10 = "frac_containing_domain10"
+    FRAC_CONTAINING_DOMAIN30 = "frac_containing_domain30"
+    FRAC_CONTAINING_DOMAIN50 = "frac_containing_domain50"
+    DISTINCT_URLS_COUNT = "distinct_urls_count"
+    FRAC_CONTAINING_MOST_VISITED_URL = "frac_containing_top_url"
+    DISTINCT_HASHTAG_COUNT = "distinct_hashtag_count"
+    FRAC_CONTAINING_MOST_USED_HASHTAG = "frac_containing_top_hashtag"
+    DISTINCT_USER_MENTION_COUNT = "distinct_user_mention_count"
+    FRAC_CONTAINING_MOST_MENTIONED_USER = "frac_containing_top_mentioned_user"
+    DISTINCT_TWEET_AUTHOR_COUNT = "distinct_tweet_author_count"
+    FRAC_CONTAINING_TOP_AUTHOR = "frac_containing_top_author"
+    AVERAGE_AUTHOR_TWITTER_LIFE = "avg_author_life"
+    AVERAGE_AUTHOR_TWEET_COUNT = "avg_author_tweet_count"
+    AVERAGE_AUTHOR_FOLLOWER_COUNT = "avg_author_follower_count"
+    AVERAGE_AUTHOR_FRIEND_COUNT = "avg_author_friend_count"
+    FRAC_FROM_VERIFIED = "frac_from_verified"
+    AVERAGE_DAY_RELEVANCE = "avg_day_relevance"
+    AVERAGE_WEEK_RELEVANCE = "avg_week_relevance"
+    AVERAGE_2WEEK_RELEVANCE = "avg_2week_relevance"
 
 
 
@@ -160,7 +199,10 @@ class TWEET(object):
     AVERAGE_KEYWORD_CERTAINTY = "avg_keyword_certainty"
     ENTITIES_COUNT = "entities_count"
     KEYWORDS_COUNT = "keywords_count"
-    SET_TO_FACTCHECK = "set_to_factcheck"
+    RELEVANCY_DAY = 'relevancy_day'
+    RELEVANCY_WEEK = 'relevancy_week'
+    RELEVANCY_TWO_WEEKS = 'relevancy_2weeks'
+    SET_TO_FACTCHECK = "set_to_factcheck"  # has been crowdsourced/analysed and decision made = True/False
 
 
 class CREDS(object):
@@ -173,6 +215,8 @@ class CREDS(object):
 class CROWDFLOWER(object):
     TWEET_CONTENT = 'tweet_content'
     ENTITY_LIST = 'entity_list'
+    FACTCHECKABLE_ANSWERS = "tick_the_box_of_the_tweets_that_are_politically_important_andor_worth_factchecking"
+    TWEET_LIST = "tweet_list"
 
 
 class TIME_INTERVAL(object):

@@ -4,17 +4,20 @@ from __future__ import division
 import calendar
 import os
 import re
+from collections import Counter
+
 import nltk
 import emoji
 import logging
 from datetime import datetime
 
+import operator
 import requests
 from bs4 import BeautifulSoup
 
 from db_engine import DBConnection
 from ingest_engine.twitter_ingest import Twitter
-from cons import DB, EMOJI_HAPPY, EMOJI_UNHAPPY, CREDS, MP, DOMAIN, TWEET, WEEKDAY
+from cons import DB, EMOJI_HAPPY, EMOJI_UNHAPPY, CREDS, MP, DOMAIN, TWEET, WEEKDAY, TOPIC
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from watson_developer_cloud import NaturalLanguageUnderstandingV1
 from watson_developer_cloud.natural_language_understanding_v1 import Features, SentimentOptions
@@ -105,66 +108,8 @@ class FeatureExtractor(object):
         '''
 
         bulk_op = self.db_connection.start_bulk_upsert(collection=DB.RELEVANT_TWEET_COLLECTION)
+        bulk_count = 0
         for tweet in tweets:
-            tweet = {
-                "_id" : 956217250092077056,
-                "retweet_count" : 21,
-                "favourites_count" : 20,
-                "links": [
-                    "https://t.co/QAcTz1HCEh.",
-                    "https://t.co/RDNcqDKPwb",
-                    "http://www.bbc.co.uk/news/uk-43840710"
-                ],
-                "url" : "https://t.co/Tv74ZcbGdR",
-                "text" : "Marvellous news @GregHands. UK Businesses bad should be confident about continuity and stability in the short term and optimistic about the work @tradegovuk are doing to open us up to the world in the longer term https://t.co/c91Vt3bs2Y",
-                "created_at" : "2018-01-24T17:28:52.000+0000",
-                "author_handle" : "@AdamAfriyie",
-                "last_updated" : "2018-02-26T18:36:00.202+0000",
-                "author_id" : 22031058,
-                "created_at_epoch" : 1516814932,
-                "html" : "<blockquote class=\"twitter-tweet\"><p lang=\"en\" dir=\"ltr\">With the Pound at its highest value since the referendum and the employment rate the highest ever recorded, now is the time to be confident about leaving the Single Market <a href=\"https://t.co/Tv74ZcbGdR\">https://t.co/Tv74ZcbGdR</a> <a href=\"https://twitter.com/ExpressSeries?ref_src=twsrc%5Etfw\">@ExpressSeries</a> <a href=\"https://twitter.com/windsorobserver?ref_src=twsrc%5Etfw\">@windsorobserver</a> <a href=\"https://twitter.com/bracknellnews?ref_src=twsrc%5Etfw\">@bracknellnews</a></p>&mdash; Adam Afriyie (@AdamAfriyie) <a href=\"https://twitter.com/AdamAfriyie/status/956217250092077056?ref_src=twsrc%5Etfw\">January 24, 2018</a></blockquote>\n<script async src=\"https://platform.twitter.com/widgets.js\" charset=\"utf-8\"></script>\n",
-                "entities" : [
-                    {
-                        "certainty" : 0.99900001,
-                        "type" : "TITLE",
-                        "entity" : "governor"
-                    },
-                    {
-                        "certainty" : 0.6645000050000001,
-                        "type" : "PERSON",
-                        "entity" : "Virginia"
-                    },
-                    {
-                        "certainty" : 0.2188269,
-                        "type" : "LOCATION",
-                        "entity" : "uk"
-                    },
-                    {
-                        "certainty" : 0.6645000050000001,
-                        "type" : "ORGANIZATION",
-                        "entity" : "Commonwealth Virginia"
-                    }
-                ],
-                "keywords" : [
-                    {
-                        "certainty" : 0.944038,
-                        "keyword" : "Governor Virginia UK"
-                    },
-                    {
-                        "certainty" : 0.873367,
-                        "keyword" : "links Commonwealth Virginia"
-                    },
-                    {
-                        "certainty" : 0.64328,
-                        "keyword" : "Outstanding meeting"
-                    }
-                ],
-                "relevancy_day" : 0.014215469360351562,
-                "relevancy_week" : 0.013840186409652233,
-                "relevancy_2weeks" : 0.013843044638633728,
-                "relevancy_month" : 0.013843044638633728
-            }
-
             text = re.sub(r'http\S+', '', tweet['text']) # Remove links
             capitalised = sum(1 for c in text if c.isupper())
             text = text.lower()
@@ -237,26 +182,27 @@ class FeatureExtractor(object):
             top10 = False
             top30 = False
             top50 = False
-            for url in tweet[TWEET.LINKS]:
-                url = requests.head(url, allow_redirects=True).url
-                url = url.split("://")[1]
-                if "www" in url:
-                    url = url.split("www.")[1]
+            if TWEET.LINKS in tweet:
+                for url in tweet[TWEET.LINKS]:
+                    url = requests.head(url, allow_redirects=True).url
+                    url = url.split("://")[1]
+                    if "www" in url:
+                        url = url.split("www.")[1]
 
-                if "/" in url:
-                    url = url.split("/")[0]
+                    if "/" in url:
+                        url = url.split("/")[0]
 
-                if len(url.split('.')[0]) > 1:
-                    # regexp = re.compile("/.*%s.*/" % url, re.IGNORECASE)
-                    regexp = "/.*%s.*/" % url
-                    match = self.db_connection.find_document(collection=DB.TOP_NEWS_DOMAINS,
-                                                             filter={"url": {"$regex": url}})
+                    if len(url.split('.')[0]) > 1:
+                        # regexp = re.compile("/.*%s.*/" % url, re.IGNORECASE)
+                        regexp = "/.*%s.*/" % url
+                        match = self.db_connection.find_document(collection=DB.TOP_NEWS_DOMAINS,
+                                                                 filter={"url": {"$regex": url}})
 
-                    for domain in match:
-                        rank = domain["rank"]
-                        top10 = rank <= 10
-                        top30 = 11 <= rank <= 30
-                        top50 = 31 <= rank <= 50
+                        for domain in match:
+                            rank = domain["rank"]
+                            top10 = rank <= 10
+                            top30 = 11 <= rank <= 30
+                            top50 = 31 <= rank <= 50
 
             # Certainty extraction
             entity_certainty = 0
@@ -296,19 +242,40 @@ class FeatureExtractor(object):
                 TWEET.POSITIVE_WORD_COUNT: pos_word_count,
                 TWEET.NEGATIVE_WORD_COUNT: neg_word_count,
                 TWEET.SENTIMENT_SCORE: sentiment_score,
-                TWEET.AVERAGE_ENTITY_CERTAINTY: entity_certainty / len(tweet[TWEET.ENTITIES]),
-                TWEET.AVERAGE_KEYWORD_CERTAINTY: keyword_certainty / len(tweet[TWEET.KEYWORDS]),
                 TWEET.ENTITIES_COUNT: len(tweet[TWEET.ENTITIES]),
                 TWEET.KEYWORDS_COUNT: len(tweet[TWEET.KEYWORDS]),
                 TWEET.CONTAINS_DOMAIN_TOP10: top10,
                 TWEET.CONTAINS_DOMAIN_TOP30: top30,
                 TWEET.CONTAINS_DOMAIN_TOP50: top50
-
-                # TWEET.CONTAINS_DOMAIN_TOP10:
             }
+
+            if len(tweet[TWEET.ENTITIES]) == 0:
+                doc[TWEET.AVERAGE_ENTITY_CERTAINTY] = 0
+
+            else:
+                doc[TWEET.AVERAGE_ENTITY_CERTAINTY] = entity_certainty / len(tweet[TWEET.ENTITIES])
+
+            if len(tweet[TWEET.KEYWORDS]) == 0:
+                doc[TWEET.AVERAGE_KEYWORD_CERTAINTY] = 0
+            else:
+                doc[TWEET.AVERAGE_KEYWORD_CERTAINTY] = keyword_certainty / len(tweet[TWEET.KEYWORDS])
+            # TWEET.AVERAGE_ENTITY_CERTAINTY: entity_certainty / len(tweet[TWEET.ENTITIES]),
+            # TWEET.AVERAGE_KEYWORD_CERTAINTY: keyword_certainty / len(tweet[TWEET.KEYWORDS]),
 
             self.db_connection.add_to_bulk_upsert(query={"_id": tweet["_id"]},
                                                   data=doc, bulk_op=bulk_op)
+
+            bulk_count += 1
+
+            if bulk_count % 100 == 0:
+                self.db_connection.end_bulk_upsert(bulk_op=bulk_op)
+                bulk_op = self.db_connection.start_bulk_upsert(collection=DB.RELEVANT_TWEET_COLLECTION)
+
+        if bulk_count % 100 != 0:
+            self.db_connection.end_bulk_upsert(bulk_op=bulk_op)
+
+
+
 
     def get_user_features(self, users):
         '''
@@ -335,9 +302,13 @@ class FeatureExtractor(object):
             cursor_count = tweet_info.count()
             total_retweets = 0
             total_favourites = 0
-            for tweet in tweet_info:
-                total_favourites += tweet["favourites_count"]
-                total_retweets += tweet["retweet_count"]
+            if cursor_count > 0:
+                for tweet in tweet_info:
+                    total_favourites += tweet["favourites_count"]
+                    total_retweets += tweet["retweet_count"]
+
+                total_retweets = total_retweets / cursor_count
+                total_favourites = total_favourites / cursor_count
 
             user_data = self.twitter.api.GetUser(user_id=user["_id"])
             created_at = datetime.strptime(user_data.created_at, '%a %b %d %H:%M:%S +0000 %Y')
@@ -349,12 +320,15 @@ class FeatureExtractor(object):
                 doc = {
                     MP.IS_VERIFIED: user_data.verified,
                     MP.FRIENDS_COUNT: user_data.friends_count,
-                    MP.AVERAGE_NO_FAVOURITES: total_favourites / cursor_count,
-                    MP.AVERAGE_NO_RETWEETS: total_retweets / cursor_count,
+                    MP.AVERAGE_NO_FAVOURITES: total_favourites,
+                    MP.AVERAGE_NO_RETWEETS: total_retweets,
                     MP.NON_EMPTY_DESCRIPTION: len(user_data.description) > 0,
-                    MP.ACCOUNT_DAYS: days_since
+                    MP.ACCOUNT_DAYS: days_since,
+                    MP.CREATED_AT: created_at,
+                    MP.CREATED_AT_EPOCH: timestamp
                 }
-                print user_data
+            self.db_connection.find_and_update(collection=DB.MP_COLLECTION, query={"_id": user["_id"]},
+                                               update={"$set": doc})
 
     def get_topic_features(self, topics):
         '''
@@ -396,11 +370,243 @@ class FeatureExtractor(object):
         :return:
         '''
 
+        for topic in topics:
+            matching_tweets = self.db_connection.find_document(collection=DB.RELEVANT_TWEET_COLLECTION,
+                                                               filter={"text": {"$regex": topic["name"],
+                                                                                "$options": "-i"}})
+
+            total = matching_tweets.count()
+            tweet_length = 0
+            contains_qm = 0
+            contains_em = 0
+            contains_multiple_marks = 0
+            contains_happy_emoticon = 0
+            contains_sad_emoticon = 0
+            contains_happy_emoji = 0
+            contains_sad_emoji = 0
+            contains_pronouns = 0
+            contains_uppercase = 0
+            contains_url = 0
+            contains_user_mention = 0
+            contains_hashtag = 0
+            contains_stock_symbols = 0
+            sentiment_score = 0
+            positive_sentiment = 0
+            negative_sentiment = 0
+            top10 = 0
+            top30 = 0
+            top50 = 0
+
+            distinct_urls_count = 0
+            most_visited_url_count = 0
+            distinct_hashtag_count = 0
+            most_used_hashtag_count = 0
+            distinct_user_mention_count = 0
+            most_mentioned_user_count = 0
+            distinct_tweet_author_count = 0
+            top_author_tweets_count = 0
+            author_twitter_life = 0
+            author_follower_count = 0
+            author_friend_count = 0
+            verified = 0
+            day_relevance = 0
+            week_relevance = 0
+            two_week_relevance = 0
+
+            # Distinctions
+
+            distinct_urls = {}
+            distinct_hashtags = {}
+            distinct_user_mentions = {}
+            distinct_authors = {}
+
+            if total > 0:
+                for tweet in matching_tweets:
+                    tweet_length += tweet[TWEET.CHARACTER_COUNT]
+                    if tweet[TWEET.CONTAINS_QM]:
+                        contains_qm += 1
+
+                    if tweet[TWEET.CONTAINS_EM]:
+                        contains_em += 1
+
+                    if tweet[TWEET.CONTAINS_MULTIPLE_MARKS]:
+                        contains_multiple_marks += 1
+
+                    if tweet[TWEET.CONTAINS_HAPPY_EMOTICON]:
+                        contains_happy_emoticon += 1
+
+                    if tweet[TWEET.CONTAINS_SAD_EMOTICON]:
+                        contains_sad_emoticon += 1
+
+                    if tweet[TWEET.CONTAINS_HAPPY_EMOJI]:
+                        contains_happy_emoji += 1
+
+                    if tweet[TWEET.CONTAINS_SAD_EMOJI]:
+                        contains_sad_emoji += 1
+
+                    if tweet[TWEET.CONTAINS_PRONOUNS]:
+                        contains_pronouns += 1
+
+                    if tweet[TWEET.FRACTION_CAPITALISED] >= 0.3:
+                        contains_uppercase += 1
+
+                    if len(tweet[TWEET.LINKS]) > 1:
+                        contains_url += 1
+                        for c, url in enumerate(tweet[TWEET.LINKS]):
+                            if c != 0: # Only adds URLs that are not the URL of the actual tweet
+                                if url not in distinct_urls:
+                                    distinct_urls[url] = 1
+
+                                else:
+                                    distinct_urls[url] = distinct_urls[url] + 1
+
+                    if tweet[TWEET.MENTIONS_USER]:
+                        contains_user_mention += 1
+
+                    if TWEET.MENTIONED_USERS in tweet:
+                        if len(tweet[TWEET.MENTIONED_USERS]) > 0:
+                            for mentioned_user in tweet[TWEET.MENTIONED_USERS]:
+                                if mentioned_user not in distinct_user_mentions:
+                                    distinct_user_mentions[mentioned_user] = 1
+
+                                else:
+                                    distinct_user_mentions[mentioned_user] = distinct_user_mentions[mentioned_user] + 1
+
+                    if TWEET.HASHTAGS in tweet:
+                        if len(tweet[TWEET.HASHTAGS]) > 0:
+                            contains_hashtag += 1
+                            for hashtag in tweet[TWEET.HASHTAGS]:
+                                if hashtag not in distinct_hashtags:
+                                    distinct_hashtags[hashtag] = 1
+
+                                else:
+                                    distinct_hashtags[hashtag] = distinct_hashtags[hashtag] + 1
+
+                    if tweet[TWEET.CONTAINS_STOCK_SYMBOL]:
+                        contains_stock_symbols += 1
+
+                    sentiment_score += tweet[TWEET.SENTIMENT_SCORE]
+                    if tweet[TWEET.SENTIMENT_SCORE] >= 0:
+                        positive_sentiment += 1
+
+                    if tweet[TWEET.SENTIMENT_SCORE] < 0:
+                        negative_sentiment += 1
+
+                    if tweet[TWEET.CONTAINS_DOMAIN_TOP10]:
+                        top10 += 1
+
+                    if tweet[TWEET.CONTAINS_DOMAIN_TOP30]:
+                        top30 += 1
+
+                    if tweet[TWEET.CONTAINS_DOMAIN_TOP50]:
+                        top50 += 1
+
+
+                    contains_multiple_marks += tweet[TWEET.CONTAINS_MULTIPLE_MARKS]
+                    contains_happy_emoticon += tweet_length[TWEET]
+
+                    author_info = self.db_connection.find_document(collection=DB.MP_COLLECTION,
+                                                                   filter={"_id": tweet[TWEET.AUTHOR_ID]})
+
+                    author_twitter_life += author_info[MP.ACCOUNT_DAYS]
+                    author_follower_count += author_info[MP.FOLLOWERS_COUNT]
+                    author_friend_count += author_info[MP.FRIENDS_COUNT]
+
+                    if author_info[MP.TWITTER_HANDLE] not in distinct_authors:
+                        distinct_authors[author_info[MP.TWITTER_HANDLE]] = 1
+                        if author_info[MP.IS_VERIFIED]:
+                            verified += 1
+                    else:
+                        distinct_authors[author_info[MP.TWITTER_HANDLE]] = distinct_authors[
+                                                                               author_info[MP.TWITTER_HANDLE]] + 1
+
+                        if author_info[MP.IS_VERIFIED]:
+                            verified += 1
+
+                    day_relevance += tweet[TWEET.RELEVANCY_DAY]
+                    week_relevance += tweet[TWEET.RELEVANCY_WEEK]
+                    two_week_relevance += tweet[TWEET.RELEVANCY_TWO_WEEKS]
+
+                distinct_urls_count += len(distinct_urls)
+                top_url = max(distinct_urls.iteritems(), key=operator.itemgetter(1))[0]
+                distinct_hashtag_count += len(distinct_hashtags)
+                top_hashtag = max(distinct_hashtags.iteritems(), key=operator.itemgetter(1))[0]
+                distinct_user_mention_count += len(distinct_user_mentions)
+                top_user_mention = max(distinct_user_mentions.iteritems(), key=operator.itemgetter(1))[0]
+                distinct_tweet_author_count += len(distinct_authors)
+                top_author = max(distinct_authors.iteritems(), key=operator.itemgetter(1))[0]
+
+                for tweet in matching_tweets:
+                    if top_url in tweet[TWEET.LINKS]:
+                        most_visited_url_count += 1
+
+                    if top_hashtag in tweet[TWEET.HASHTAGS]:
+                        most_used_hashtag_count += 1
+
+                    if top_user_mention in tweet[TWEET.MENTIONED_USERS]:
+                        most_mentioned_user_count += 1
+
+                    if tweet[TWEET.AUTHOR_HANDLE] == top_author:
+                        top_author_tweets_count += 1
+
+                doc = {
+                        TOPIC.TWEET_COUNT: total,
+                        TOPIC.TWEET_AVERAGE_LENGTH: tweet_length / total,
+                        TOPIC.FRAC_CONTAINING_QM: contains_qm / total,
+                        TOPIC.FRAC_CONTAINING_EM: contains_em / total,
+                        TOPIC.FRAC_CONTAINING_MULTIPLE_MARKS: contains_multiple_marks / total,
+                        TOPIC.FRAC_CONTAINING_HAPPY_EMOTICON: contains_happy_emoticon / total,
+                        TOPIC.FRAC_CONTAINING_SAD_EMOTICON: contains_sad_emoticon / total,
+                        TOPIC.FRAC_CONTAINING_HAPPY_EMOJI: contains_happy_emoji / total,
+                        TOPIC.FRAC_CONTAINING_SAD_EMOJI: contains_sad_emoji / total,
+                        TOPIC.FRAC_CONTAINING_PRONOUNS: contains_pronouns / total,
+                        TOPIC.FRAC_CONTAINING_UPPERCASE: contains_uppercase / total,
+                        TOPIC.FRAC_CONTAINING_URL: contains_url / total,
+                        TOPIC.FRAC_CONTAINING_USER_MENTION: contains_user_mention / total,
+                        TOPIC.FRAC_CONTAINING_HASHTAGS: contains_hashtag / total,
+                        TOPIC.FRAC_CONTAINING_STOCK_SYMBOLS: contains_stock_symbols / total,
+                        TOPIC.AVERAGE_SENTIMENT_SCORE: sentiment_score / total,
+                        TOPIC.FRAC_CONTAINING_POSITIVE_SENTIMENT: positive_sentiment / total,
+                        TOPIC.FRAC_CONTAINING_NEGATIVE_SENTIMENT: negative_sentiment / total,
+                        TOPIC.FRAC_CONTAINING_DOMAIN10: top10 / total,
+                        TOPIC.FRAC_CONTAINING_DOMAIN30: top30 / total,
+                        TOPIC.FRAC_CONTAINING_DOMAIN50: top50 / total,
+                        TOPIC.DISTINCT_URLS_COUNT: distinct_urls_count,
+                        TOPIC.FRAC_CONTAINING_MOST_VISITED_URL: most_visited_url_count / total,
+                        TOPIC.DISTINCT_HASHTAG_COUNT: distinct_hashtag_count,
+                        TOPIC.FRAC_CONTAINING_MOST_USED_HASHTAG: most_used_hashtag_count / total,
+                        TOPIC.DISTINCT_USER_MENTION_COUNT: distinct_user_mention_count,
+                        TOPIC.FRAC_CONTAINING_MOST_MENTIONED_USER: most_mentioned_user_count / total,
+                        TOPIC.DISTINCT_TWEET_AUTHOR_COUNT: distinct_tweet_author_count,
+                        TOPIC.FRAC_CONTAINING_TOP_AUTHOR: top_author_tweets_count / total,
+                        TOPIC.AVERAGE_AUTHOR_TWITTER_LIFE: author_twitter_life / distinct_tweet_author_count,
+                        TOPIC.AVERAGE_AUTHOR_TWEET_COUNT: total / distinct_tweet_author_count,
+                        TOPIC.AVERAGE_AUTHOR_FOLLOWER_COUNT: author_follower_count / distinct_tweet_author_count,
+                        TOPIC.AVERAGE_AUTHOR_FRIEND_COUNT: author_friend_count / distinct_tweet_author_count,
+                        TOPIC.FRAC_FROM_VERIFIED: verified / distinct_tweet_author_count,
+                        TOPIC.AVERAGE_DAY_RELEVANCE: day_relevance / total,
+                        TOPIC.AVERAGE_WEEK_RELEVANCE: week_relevance / total,
+                        TOPIC.AVERAGE_2WEEK_RELEVANCE: two_week_relevance / total
+                    }
+
+                self.db_connection.find_and_update(
+                    collection=DB.RELEVANT_TOPICS,
+                    query={"_id": topic["_id"]},
+                    update={"$set": doc})
+
+
+
+
+
+
 
 if __name__ == "__main__":
     ft = FeatureExtractor()
     # ft.get_top_websites()
-    tweets = ft.db_connection.find_document(collection=DB.RELEVANT_TWEET_COLLECTION, filter={})
+    tweets = ft.db_connection.find_document(collection=DB.RELEVANT_TWEET_COLLECTION,
+                                            filter={"word_count": {"$exists": False}})
     # users = ft.db_connection.find_document(collection=DB.MP_COLLECTION, filter={})
     # ft.get_user_features(users=users)
     ft.get_tweet_features(tweets=tweets)
+    # topics = ft.db_connection.find_document(collection=DB.RELEVANT_TOPICS)
+    # ft.get_topic_features(topics=topics)

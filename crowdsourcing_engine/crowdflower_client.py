@@ -3,7 +3,7 @@ import os
 from db_engine import DBConnection
 import json
 from cons import CROWDFLOWER as CF
-from cons import DB
+from cons import DB, TWEET
 import requests
 import json
 
@@ -67,13 +67,47 @@ class CrowdFlower(object):
 
     def get_judgements(self, job_id):
         page_no = 1
+        index_resolver = {
+            "tweet1": 0,
+            "tweet2": 1,
+            "tweet3": 2,
+            "tweet4": 3,
+            "tweet5": 4,
+            "tweet6": 5,
+            "tweet7": 6,
+            "tweet8": 7,
+            "tweet9": 8,
+            "tweet10": 9
+        }
         results = self.judgements_session.get(
             url="https://api.figure-eight.com/v1/jobs/%s/judgments.json?key=%s&page=%s" %
                 (job_id, self.api_key, page_no))
 
         content = json.loads(results.content)
         for key, result in content.iteritems():
-            print result
+            answers = result[CF.FACTCHECKABLE_ANSWERS]
+            answers = answers['res']
+            tweets_to_check = {}
+            for answer in answers:
+                if len(answer) != 10:
+                    for tweet in answer:
+                        if tweet not in tweets_to_check:
+                            tweets_to_check[tweet] = 1
+
+                        else:
+                            tweets_to_check[tweet] = tweets_to_check[tweet] + 1
+
+            tweet_list = result[CF.TWEET_LIST]
+            for tweet, occurrence in tweets_to_check.iteritems():
+                if occurrence > 1:
+                    text = tweet_list[index_resolver.get(tweet)]
+                    self.db_connection.find_and_update(collection=DB.RELEVANT_TWEET_COLLECTION,
+                                                       query={"text": text, TWEET.SET_TO_FACTCHECK: {"$exists": False}},
+                                                       update={"$set": {TWEET.SET_TO_FACTCHECK: True}})
+
+
+
+
             # json_result = json.loads(results)
 
     def get_fact_opinion(self, job_id):
@@ -157,8 +191,23 @@ class CrowdFlower(object):
 
         job.upload(data=data_list, force=True)
 
+    def fact_checking_processing(self, job_id):
+        data_list = []
+        job = self.client.get_job(job_id)
+        tweets = self.db_connection.find_document(collection=DB.RELEVANT_TWEET_COLLECTION,
+                                                  filter={TWEET.SET_TO_FACTCHECK: True},
+                                                  projection={TWEET.TEXT: 1})
+
+        print tweets.count()
+        for tweet in tweets:
+            data_list.append({"tweet": tweet["text"]})
+
+        job.upload(data=data_list, force=True)
+
+
 cf = CrowdFlower()
 # cf.process_job()
-cf.get_judgements(job_id=1257130)
+# cf.get_judgements(job_id=1257130)
+cf.fact_checking_processing(job_id=1260144)
 # cf.get_fact_opinion(job_id=1257130)
 
