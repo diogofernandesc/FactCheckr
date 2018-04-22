@@ -14,6 +14,7 @@ from datetime import datetime
 import operator
 import requests
 from bs4 import BeautifulSoup
+
 from requests.exceptions import ConnectionError
 from db_engine import DBConnection
 from ingest_engine.twitter_ingest import Twitter
@@ -206,7 +207,6 @@ class FeatureExtractor(object):
                                 top50 = 31 <= rank <= 50
                     except ConnectionError as e:
                         logger.warn(e)
-
 
             # Certainty extraction
             entity_certainty = 0
