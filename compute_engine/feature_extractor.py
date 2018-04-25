@@ -715,6 +715,7 @@ class FeatureExtractor(object):
             contains_sad_emoji = 0
             contains_pronouns = 0
             contains_uppercase = 0
+            contains_figures = 0
             contains_url = 0
             contains_user_mention = 0
             contains_hashtag = 0
@@ -741,6 +742,7 @@ class FeatureExtractor(object):
             day_relevance = 0
             week_relevance = 0
             two_week_relevance = 0
+            words_not_in_dict = 0
 
             # Distinctions
 
@@ -775,6 +777,9 @@ class FeatureExtractor(object):
 
                     if tweet[TWEET.CONTAINS_PRONOUNS]:
                         contains_pronouns += 1
+
+                    if tweet[TWEET.CONTAINS_FIGURES]:
+                        contains_figures += 1
 
                     if tweet[TWEET.FRACTION_CAPITALISED] >= 0.3:
                         contains_uppercase += 1
@@ -885,6 +890,7 @@ class FeatureExtractor(object):
                         TOPIC.FRAC_CONTAINING_HAPPY_EMOJI: contains_happy_emoji / total,
                         TOPIC.FRAC_CONTAINING_SAD_EMOJI: contains_sad_emoji / total,
                         TOPIC.FRAC_CONTAINING_PRONOUNS: contains_pronouns / total,
+                        TOPIC.FRAC_CONTAINING_FIGURES: contains_figures / total,
                         TOPIC.FRAC_CONTAINING_UPPERCASE: contains_uppercase / total,
                         TOPIC.FRAC_CONTAINING_URL: contains_url / total,
                         TOPIC.FRAC_CONTAINING_USER_MENTION: contains_user_mention / total,
@@ -911,7 +917,8 @@ class FeatureExtractor(object):
                         TOPIC.FRAC_FROM_VERIFIED: verified / distinct_tweet_author_count,
                         TOPIC.AVERAGE_DAY_RELEVANCE: day_relevance / total,
                         TOPIC.AVERAGE_WEEK_RELEVANCE: week_relevance / total,
-                        TOPIC.AVERAGE_2WEEK_RELEVANCE: two_week_relevance / total
+                        TOPIC.AVERAGE_2WEEK_RELEVANCE: two_week_relevance / total,
+                        TOPIC.AVERAGE_WORDS_NOT_IN_DICT: words_not_in_dict / total,
                     }
 
                 self.db_connection.find_and_update(

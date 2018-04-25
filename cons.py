@@ -109,6 +109,7 @@ class TOPIC(object):
     FRAC_CONTAINING_HAPPY_EMOJI = "frac_containing_happy_emoji"
     FRAC_CONTAINING_SAD_EMOJI = "frac_containing_sad_emoji"
     FRAC_CONTAINING_PRONOUNS = "frac_containing_pronouns"
+    FRAC_CONTAINING_FIGURES = "frac_containing_figures"
     FRAC_CONTAINING_UPPERCASE = "frac_containing_uppercase"
     FRAC_CONTAINING_URL = "frac_containing_url"
     FRAC_CONTAINING_USER_MENTION = "frac_containing_user_mention"
@@ -136,6 +137,7 @@ class TOPIC(object):
     AVERAGE_DAY_RELEVANCE = "avg_day_relevance"
     AVERAGE_WEEK_RELEVANCE = "avg_week_relevance"
     AVERAGE_2WEEK_RELEVANCE = "avg_2week_relevance"
+    AVERAGE_WORDS_NOT_IN_DICT = "avg_words_not_in_dict"
 
 
 
