@@ -132,12 +132,16 @@ class DBConnection(object):
     def delete_tweet(self, tweet_id):
         tweet_data = self.db.mp_tweets
         result = tweet_data.delete_one({'_id': tweet_id})
-        print result.deleted_count
 
     def delete_tweets_by_id(self, tweet_ids):
         tweet_data = self.db.mp_tweets
         result = tweet_data.delete_many({"_id": {"$in": [tweet_ids]}})
-        print result.deleted_count
+
+    def get_random_sample(self, collection, query, size):
+        result = self.db[collection].aggregate([
+            {"$match": query},{"$sample": {"size": size}
+        }])
+        return result
 
     def close(self):
         self.client.close()

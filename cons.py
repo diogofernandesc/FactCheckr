@@ -203,6 +203,10 @@ class TWEET(object):
     RELEVANCY_WEEK = 'relevancy_week'
     RELEVANCY_TWO_WEEKS = 'relevancy_2weeks'
     SET_TO_FACTCHECK = "set_to_factcheck"  # has been crowdsourced/analysed and decision made = True/False
+    LABEL = "label"
+    VERIFIED_URLS = "verified_urls_real"
+    CONTAINS_FIGURES = 'contains_figures'
+    FRAC_NOT_IN_DICT = 'frac_not_in_dict'
 
 
 class CREDS(object):
@@ -218,6 +222,11 @@ class CROWDFLOWER(object):
     FACTCHECKABLE_ANSWERS = "tick_the_box_of_the_tweets_that_are_politically_important_andor_worth_factchecking"
     TWEET_LIST = "tweet_list"
 
+
+class CLASSIFIER(object):
+    ALMOST_DEFINITELY_TRUE = 1
+    LIKELY_TO_BE_FALSE = -1
+    ALMOST_DEFINITELY_FALSE = -1
 
 class TIME_INTERVAL(object):
     DAY = 86400

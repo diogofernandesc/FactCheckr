@@ -194,13 +194,23 @@ class CrowdFlower(object):
     def fact_checking_processing(self, job_id):
         data_list = []
         job = self.client.get_job(job_id)
-        tweets = self.db_connection.find_document(collection=DB.RELEVANT_TWEET_COLLECTION,
-                                                  filter={TWEET.SET_TO_FACTCHECK: True},
-                                                  projection={TWEET.TEXT: 1})
+        # tweets = self.db_connection.find_document(collection=DB.RELEVANT_TWEET_COLLECTION,
+        #                                           filter={"$and":[{TWEET.SET_TO_FACTCHECK: True},
+        #                                                           {"crowdsourced":{"$exists": False}}]},
+        #                                           projection={TWEET.TEXT: 1})
 
-        print tweets.count()
+        tweets = list(self.db_connection.get_random_sample(collection=DB.RELEVANT_TWEET_COLLECTION,
+                                                      query={"$and":[{"set_to_factcheck": True},
+                                                                     {"crowdsourced":{"$exists": False}}]}, size=300))
+
+        bulk_op = self.db_connection.start_bulk_upsert(collection=DB.RELEVANT_TWEET_COLLECTION)
+        # print tweets.count()
         for tweet in tweets:
             data_list.append({"tweet": tweet["text"]})
+            self.db_connection.add_to_bulk_upsert(query={"_id": tweet["_id"]},
+                                                  data={"crowdsourced": True}, bulk_op=bulk_op)
+
+        self.db_connection.end_bulk_upsert(bulk_op=bulk_op)
 
         job.upload(data=data_list, force=True)
 
@@ -208,6 +218,7 @@ class CrowdFlower(object):
 cf = CrowdFlower()
 # cf.process_job()
 # cf.get_judgements(job_id=1257130)
-cf.fact_checking_processing(job_id=1260144)
+cf.fact_checking_processing(1260770)
+# cf.fact_checking_processing(job_id=1260144)
 # cf.get_fact_opinion(job_id=1257130)
 
