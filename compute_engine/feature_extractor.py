@@ -535,7 +535,6 @@ class FeatureExtractor(object):
                     except ConnectionError as e:
                         logger.warn(e)
 
-
             # Certainty extraction
             entity_certainty = 0
             keyword_certainty = 0
