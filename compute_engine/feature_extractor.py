@@ -121,6 +121,7 @@ class FeatureExtractor(object):
         resp = requests.head(url[1], allow_redirects=True, timeout=3)
         # if resp.status_code == 200 or resp.status_code == 302:
         self.resolved_urls.append((url[0], resp.url))
+        resp.close()
         # print "appended"
 
     def convert_weekday(self, weekday):
@@ -152,6 +153,52 @@ class FeatureExtractor(object):
 
         f.close()
         self.db_connection.bulk_insert(data=domains_to_insert, collection=DB.TOP_NEWS_DOMAINS)
+
+    def aggregate_urls(self, tweets):
+        urls_list = []
+        resolved_urls = []
+        bulk_count = 0
+        bulk_op = self.db_connection.start_bulk_upsert(collection=DB.RELEVANT_TWEET_COLLECTION)
+        # pool = ThreadPool(100)
+        for tweet in tweets:
+            # urls = re.findall(r'(https?://[^\s]+)', tweet["text"])
+            urls = re.findall('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+',
+                              tweet["text"])
+            if len(urls) > 0:
+                for url in urls:
+                    urls_list.append((tweet["_id"], url))
+
+        url_chunks = self.chunks(urls_list, 100)
+        for chunk in url_chunks:
+
+            pool = ThreadPool(100)
+            pool.imap_unordered(self.fetch_url, chunk)
+            pool.close()
+            pool.join()
+            pool.terminate()
+
+            for tweet_id, long_url in self.resolved_urls:
+                self.db_connection.add_to_bulk_upsert_push(query={"_id": tweet_id}, field=TWEET.RESOLVED_URLS,
+                                                           value=long_url, bulk_op=bulk_op)
+
+                bulk_count += 1
+
+            try:
+                if bulk_count != 0:
+                    self.db_connection.end_bulk_upsert(bulk_op=bulk_op)
+                    bulk_op = self.db_connection.start_bulk_upsert(collection=DB.RELEVANT_TWEET_COLLECTION)
+                    logger.info("pushing %d updates to database" % bulk_count)
+                    bulk_count = 0
+
+            except InvalidOperation as e:
+                logger.warn(e)
+
+            urls_list = []
+            # resolved_urls = []
+            self.resolved_urls = []
+
+        if bulk_count != 0:
+            self.db_connection.end_bulk_upsert(bulk_op=bulk_op)
 
     def get_tweet_urls(self, tweets):
 
@@ -262,140 +309,6 @@ class FeatureExtractor(object):
 
         if bulk_count != 0:
             self.db_connection.end_bulk_upsert(bulk_op=bulk_op)
-
-
-
-        # tweets = list(tweets)
-        # tweets_chunk = list(self.chunks(tweets, 500))
-        # for chunk in tweets_chunk:
-        #     for tweet in chunk:
-        #         urls = re.findall(r'(https?://[^\s]+)', tweet[TWEET.TEXT])
-        #         if len(urls) > 0:
-        #             urls_list.append((tweet["_id"], urls))
-        #
-        #     url_chunks = []
-        #     pool = multiprocessing.Pool(100)
-        #     for tweet_id, long_urls in pool.map(self.resolve_url, urls_dict):
-        #         url_chunks.append((tweet_id, long_urls))
-        #
-        #     for url_info in url_chunks:
-        #         try:
-        #             url = url_info[1].split("://")[1]
-        #             if re.match(r'^www.', url):
-        #                 try:
-        #                     url = url.split("www.")[1]
-        #                 except IndexError:
-        #                     url = url.split("www3.")[1]
-        #
-        #             if "/" in url:
-        #                 url = url.split("/")[0]
-        #
-        #             if len(url.split('.')[0]) > 1:
-        #                 # regexp = re.compile("/.*%s.*/" % url, re.IGNORECASE)
-        #                 match = self.db_connection.find_document(collection=DB.TOP_NEWS_DOMAINS,
-        #                                                          filter={"url": {"$regex": url}})
-        #
-        #                 for domain in match:
-        #                     rank = domain["rank"]
-        #                     if not top10:
-        #                         top10 = rank <= 10
-        #
-        #                     if not top30:
-        #                         top30 = 11 <= rank <= 30
-        #
-        #                     if not top50:
-        #                         top50 = 31 <= rank <= 50
-        #
-        #                 if top10 or top30 or top50:  # if there is an update
-        #                     doc = {
-        #                         TWEET.CONTAINS_DOMAIN_TOP10: top10,
-        #                         TWEET.CONTAINS_DOMAIN_TOP30: top30,
-        #                         TWEET.CONTAINS_DOMAIN_TOP50: top50,
-        #                         TWEET.VERIFIED_URLS: True
-        #                     }
-        #
-        #                     self.db_connection.add_to_bulk_upsert(query={"_id": url_info[0]}, data=doc,
-        #                                                           bulk_op=bulk_op)
-        #                     bulk_count += 1
-        #
-        #                     try:
-        #                         if bulk_count != 0 and bulk_count % 100 == 0:
-        #                             self.db_connection.end_bulk_upsert(bulk_op=bulk_op)
-        #                             bulk_op = self.db_connection.start_bulk_upsert(
-        #                                 collection=DB.RELEVANT_TWEET_COLLECTION)
-        #
-        #                     except InvalidOperation as e:
-        #                         logger.warn(e)
-        #
-        #         except (ConnectionError, TooManyRedirects) as e:
-        #             logger.warn(e)
-        #
-        # if bulk_count != 0 and bulk_count % 100 != 0:
-        #     self.db_connection.end_bulk_upsert(bulk_op=bulk_op)
-
-
-        # for tweet in tweets:
-        #     # for tweet_id, longurl in pool.map(self.resolve_url, urls):
-        #
-        #     # Domain extraction
-        #     top10 = False
-        #     top30 = False
-        #     top50 = False
-        #     urls = re.findall(r'(https?://[^\s]+)', tweet[TWEET.TEXT])
-        #     if urls:
-        #         for url in urls:
-        #             try:
-        #                 url = requests.head(url, allow_redirects=True).url
-        #                 url = url.split("://")[1]
-        #                 if re.match(r'^www.', url):
-        #                     try:
-        #                         url = url.split("www.")[1]
-        #                     except IndexError:
-        #                         url = url.split("www3.")[1]
-        #
-        #                 if "/" in url:
-        #                     url = url.split("/")[0]
-        #
-        #                 if len(url.split('.')[0]) > 1:
-        #                     # regexp = re.compile("/.*%s.*/" % url, re.IGNORECASE)
-        #                     regexp = "/.*%s.*/" % url
-        #                     match = self.db_connection.find_document(collection=DB.TOP_NEWS_DOMAINS,
-        #                                                              filter={"url": {"$regex": url}})
-        #
-        #                     for domain in match:
-        #                         rank = domain["rank"]
-        #                         if not top10:
-        #                             top10 = rank <= 10
-        #
-        #                         if not top30:
-        #                             top30 = 11 <= rank <= 30
-        #
-        #                         if not top50:
-        #                             top50 = 31 <= rank <= 50
-        #
-        #             except (ConnectionError, TooManyRedirects) as e:
-        #                 logger.warn(e)
-        #
-        #         doc = {
-        #             TWEET.CONTAINS_DOMAIN_TOP10: top10,
-        #             TWEET.CONTAINS_DOMAIN_TOP30: top30,
-        #             TWEET.CONTAINS_DOMAIN_TOP50: top50,
-        #             TWEET.VERIFIED_URLS: True
-        #         }
-        #
-        #         self.db_connection.add_to_bulk_upsert(query={"_id": tweet[TWEET.ID]}, data=doc, bulk_op=bulk_op)
-        #         bulk_count += 1
-        #
-        #     try:
-        #         if bulk_count != 0 and bulk_count % 100 == 0:
-        #             self.db_connection.end_bulk_upsert(bulk_op=bulk_op)
-        #             bulk_op = self.db_connection.start_bulk_upsert(collection=DB.RELEVANT_TWEET_COLLECTION)
-        #
-        #     except InvalidOperation as e:
-        #         logger.warn(e)
-        #
-        # if bulk_count != 0 and bulk_count % 100 != 0:
-        #     self.db_connection.end_bulk_upsert(bulk_op=bulk_op)
 
     def get_tweet_features(self, tweets):
         '''
@@ -699,8 +612,9 @@ class FeatureExtractor(object):
         '''
 
         for topic in topics:
+            tweet_bulk_op = self.db_connection.start_bulk_upsert(collection=DB.RELEVANT_TWEET_COLLECTION)
             matching_tweets = self.db_connection.find_document(collection=DB.RELEVANT_TWEET_COLLECTION,
-                                                               filter={"text": {"$regex": topic["name"],
+                                                               filter={"text": {"$regex": " %s " % topic["name"],
                                                                                 "$options": "-i"}})
 
             total = matching_tweets.count()
@@ -737,6 +651,7 @@ class FeatureExtractor(object):
             author_twitter_life = 0
             author_follower_count = 0
             author_friend_count = 0
+            author_tweet_count = 0
             verified = 0
             day_relevance = 0
             week_relevance = 0
@@ -752,6 +667,15 @@ class FeatureExtractor(object):
 
             if total > 0:
                 for tweet in matching_tweets:
+                    self.db_connection.add_to_bulk_upsert_push(query={TWEET.ID: tweet["_id"]},
+                                                               field=TWEET.TOPICS,
+                                                               value={"_id": topic["_id"], TOPIC.IDENTIFIED_AS_TOPIC: topic[TOPIC.IDENTIFIED_AS_TOPIC]},
+                                                               bulk_op=tweet_bulk_op)
+
+                                                                             # {"_id": topic["_id"],
+                                                        # TOPIC.IDENTIFIED_AS_TOPIC: topic[TOPIC.IDENTIFIED_AS_TOPIC]}}},
+                                                        #   bulk_op=tweet_bulk_op)
+
                     tweet_length += tweet[TWEET.CHARACTER_COUNT]
                     if tweet[TWEET.CONTAINS_QM]:
                         contains_qm += 1
@@ -783,15 +707,18 @@ class FeatureExtractor(object):
                     if tweet[TWEET.FRACTION_CAPITALISED] >= 0.3:
                         contains_uppercase += 1
 
-                    # urls = re.findall(r'(https?://[^\s]+)', tweet[TWEET.TEXT])
-                    # if len(urls) > 0:
-                    #     contains_url += 1
-                    #     for c, url in enumerate(tweet[TWEET.LINKS]):
-                    #         if url not in distinct_urls:
-                    #             distinct_urls[url] = 1
-                    #
-                    #         else:
-                    #             distinct_urls[url] = distinct_urls[url] + 1
+                    urls = re.findall(r'(https?://[^\s]+)', tweet[TWEET.TEXT])
+                    if len(urls) > 0:
+                        contains_url += 1
+                        if TWEET.RESOLVED_URLS in tweet:
+                            for c, url in enumerate(tweet[TWEET.RESOLVED_URLS]):
+                                if url not in distinct_urls:
+                                    if url.split("//")[1].split("/")[0] != "twitter.com":  # Ignore twitter domain URLs
+                                        distinct_urls[url] = 1
+
+                                else:
+                                    distinct_urls[url] = distinct_urls[url] + 1
+
 
                     if tweet[TWEET.MENTIONS_USER]:
                         contains_user_mention += 1
@@ -837,46 +764,56 @@ class FeatureExtractor(object):
                     author_info = self.db_connection.find_document(collection=DB.MP_COLLECTION,
                                                                    filter={"_id": tweet[TWEET.AUTHOR_ID]})[0]
 
-                    author_twitter_life += author_info[MP.ACCOUNT_DAYS]
-                    author_follower_count += author_info[MP.FOLLOWERS_COUNT]
-                    author_friend_count += author_info[MP.FRIENDS_COUNT]
-
                     if author_info[MP.TWITTER_HANDLE] not in distinct_authors:
                         distinct_authors[author_info[MP.TWITTER_HANDLE]] = 1
                         if author_info[MP.IS_VERIFIED]:
                             verified += 1
+
+                        author_twitter_life += author_info[MP.ACCOUNT_DAYS]
+                        author_follower_count += author_info[MP.FOLLOWERS_COUNT]
+                        author_friend_count += author_info[MP.FRIENDS_COUNT]
+                        author_tweet_count += author_info[MP.TWEET_COUNT]
+
                     else:
                         distinct_authors[author_info[MP.TWITTER_HANDLE]] = distinct_authors[
                                                                                author_info[MP.TWITTER_HANDLE]] + 1
 
-                        if author_info[MP.IS_VERIFIED]:
-                            verified += 1
+                        # if author_info[MP.IS_VERIFIED]:
+                        #     verified += 1
 
                     day_relevance += tweet[TWEET.RELEVANCY_DAY]
                     week_relevance += tweet[TWEET.RELEVANCY_WEEK]
                     two_week_relevance += tweet[TWEET.RELEVANCY_TWO_WEEKS]
+                    words_not_in_dict += tweet[TWEET.FRAC_NOT_IN_DICT]
 
-                # distinct_urls_count += len(distinct_urls)
-                # top_url = max(distinct_urls.iteritems(), key=operator.itemgetter(1))[0]
+                distinct_urls_count += len(distinct_urls)
+                if distinct_urls_count > 0:
+                    top_url = max(distinct_urls.iteritems(), key=operator.itemgetter(1))[0]
+
                 distinct_hashtag_count += len(distinct_hashtags)
-                top_hashtag = max(distinct_hashtags.iteritems(), key=operator.itemgetter(1))[0]
+                if distinct_hashtag_count > 0:
+                    top_hashtag = max(distinct_hashtags.iteritems(), key=operator.itemgetter(1))[0]
+
                 distinct_user_mention_count += len(distinct_user_mentions)
-                top_user_mention = max(distinct_user_mentions.iteritems(), key=operator.itemgetter(1))[0]
+                if distinct_user_mention_count > 0:
+                    top_user_mention = max(distinct_user_mentions.iteritems(), key=operator.itemgetter(1))[0]
+
                 distinct_tweet_author_count += len(distinct_authors)
-                top_author = max(distinct_authors.iteritems(), key=operator.itemgetter(1))[0]
+                if distinct_tweet_author_count > 0:
+                    top_author = max(distinct_authors.iteritems(), key=operator.itemgetter(1))[0]
 
-                for tweet in matching_tweets:
-                    # if top_url in tweet[TWEET.LINKS]:
-                    #     most_visited_url_count += 1
-
-                    if top_hashtag in tweet[TWEET.HASHTAGS]:
-                        most_used_hashtag_count += 1
-
-                    if top_user_mention in tweet[TWEET.MENTIONED_USERS]:
-                        most_mentioned_user_count += 1
-
-                    if tweet[TWEET.AUTHOR_HANDLE] == top_author:
-                        top_author_tweets_count += 1
+                # for tweet in matching_tweets:
+                #     if top_url in tweet[TWEET.RESOLVED_URLS]:
+                #         most_visited_url_count += 1
+                #
+                #     if top_hashtag in tweet[TWEET.HASHTAGS]:
+                #         most_used_hashtag_count += 1
+                #
+                #     if top_user_mention in tweet[TWEET.MENTIONED_USERS]:
+                #         most_mentioned_user_count += 1
+                #
+                #     if tweet[TWEET.AUTHOR_HANDLE] == top_author:
+                #         top_author_tweets_count += 1
 
                 doc = {
                         TOPIC.TWEET_COUNT: total,
@@ -902,15 +839,11 @@ class FeatureExtractor(object):
                         TOPIC.FRAC_CONTAINING_DOMAIN30: top30 / total,
                         TOPIC.FRAC_CONTAINING_DOMAIN50: top50 / total,
                         TOPIC.DISTINCT_URLS_COUNT: distinct_urls_count,
-                        TOPIC.FRAC_CONTAINING_MOST_VISITED_URL: most_visited_url_count / total,
                         TOPIC.DISTINCT_HASHTAG_COUNT: distinct_hashtag_count,
-                        TOPIC.FRAC_CONTAINING_MOST_USED_HASHTAG: most_used_hashtag_count / total,
                         TOPIC.DISTINCT_USER_MENTION_COUNT: distinct_user_mention_count,
-                        TOPIC.FRAC_CONTAINING_MOST_MENTIONED_USER: most_mentioned_user_count / total,
                         TOPIC.DISTINCT_TWEET_AUTHOR_COUNT: distinct_tweet_author_count,
-                        TOPIC.FRAC_CONTAINING_TOP_AUTHOR: top_author_tweets_count / total,
                         TOPIC.AVERAGE_AUTHOR_TWITTER_LIFE: author_twitter_life / distinct_tweet_author_count,
-                        TOPIC.AVERAGE_AUTHOR_TWEET_COUNT: total / distinct_tweet_author_count,
+                        TOPIC.AVERAGE_AUTHOR_TWEET_COUNT: author_tweet_count / distinct_tweet_author_count,
                         TOPIC.AVERAGE_AUTHOR_FOLLOWER_COUNT: author_follower_count / distinct_tweet_author_count,
                         TOPIC.AVERAGE_AUTHOR_FRIEND_COUNT: author_friend_count / distinct_tweet_author_count,
                         TOPIC.FRAC_FROM_VERIFIED: verified / distinct_tweet_author_count,
@@ -920,10 +853,41 @@ class FeatureExtractor(object):
                         TOPIC.AVERAGE_WORDS_NOT_IN_DICT: words_not_in_dict / total,
                     }
 
+                if distinct_urls_count > 0:
+                    doc[TOPIC.FRAC_CONTAINING_MOST_VISITED_URL] = distinct_urls.get(top_url) / total
+
+                else:
+                    doc[TOPIC.FRAC_CONTAINING_MOST_VISITED_URL] = 0
+
+                if distinct_hashtag_count > 0:
+                    doc[TOPIC.FRAC_CONTAINING_MOST_USED_HASHTAG] = distinct_hashtags.get(top_hashtag) / total
+
+                else:
+                    doc[TOPIC.FRAC_CONTAINING_MOST_USED_HASHTAG] = 0
+
+                if distinct_user_mention_count > 0:
+                    doc[TOPIC.FRAC_CONTAINING_MOST_MENTIONED_USER] = distinct_user_mentions.get(top_user_mention) / total
+
+                else:
+                    doc[TOPIC.FRAC_CONTAINING_MOST_MENTIONED_USER] = 0
+
+                if distinct_tweet_author_count > 0:
+                    doc[TOPIC.FRAC_CONTAINING_TOP_AUTHOR] = distinct_authors.get(top_author) / total
+
+                else:
+                    doc[TOPIC.FRAC_CONTAINING_TOP_AUTHOR] = 0
+
+
+                # self.db_connection.update_many(collection=DB.RELEVANT_TWEET_COLLECTION,
+                #                                query={"$in": tweet_id_list},
+                #                                update={"$push": {TWEET.TOPICS: {"_id": topic["_id"],
+                #                                         TOPIC.IDENTIFIED_AS_TOPIC: topic[TOPIC.IDENTIFIED_AS_TOPIC]}}})
                 self.db_connection.find_and_update(
                     collection=DB.RELEVANT_TOPICS,
                     query={"_id": topic["_id"]},
                     update={"$set": doc})
+
+                self.db_connection.end_bulk_upsert(bulk_op=tweet_bulk_op)
 
 
 if __name__ == "__main__":
@@ -932,16 +896,20 @@ if __name__ == "__main__":
     # tweets = ft.db_connection.find_document(collection=DB.RELEVANT_TWEET_COLLECTION,
     #                                         filter={TWEET.VERIFIED_URLS: {"$exists": False}})
 
-    tweets = ft.db_connection.find_document(collection=DB.RELEVANT_TWEET_COLLECTION, projection={"text": 1})
+    # tweets = ft.db_connection.find_document(collection=DB.RELEVANT_TWEET_COLLECTION,
+    #                                         filter={TWEET.RESOLVED_URLS: {"$exists": False}}, projection={"text": 1})
     # tweets = ft.db_connection.find_document(collection=DB.RELEVANT_TWEET_COLLECTION,
     #                                         filter={TWEET.TEXT: {"$regex": ".com"}})
                                             # filter={TWEET.VERIFIED_URLS: {"$exists": False}})
 
-    print tweets.count()
-    ft.get_extra_features(tweets)
+    # print tweets.count()
+    # ft.get_extra_features(tweets)
+    # ft.aggregate_urls(tweets)
     # ft.get_tweet_urls(tweets)
     # users = ft.db_connection.find_document(collection=DB.MP_COLLECTION, filter={})
     # ft.get_user_features(users=users)
     # ft.get_tweet_features(tweets=tweets)
-    # topics = ft.db_connection.find_document(collection=DB.RELEVANT_TOPICS)
-    # ft.get_topic_features(topics=topics)
+    # topics = ft.db_connection.find_document(collection=DB.RELEVANT_TOPICS,
+    #                                         filter={TOPIC.TWEET_COUNT: {"$exists": False}})
+    topics = ft.db_connection.find_document(collection=DB.RELEVANT_TOPICS)
+    ft.get_topic_features(topics=topics)

@@ -209,6 +209,8 @@ class TWEET(object):
     VERIFIED_URLS = "verified_urls_real"
     CONTAINS_FIGURES = 'contains_figures'
     FRAC_NOT_IN_DICT = 'frac_not_in_dict'
+    RESOLVED_URLS = 'resolved_urls'
+    TOPICS = 'topics'
 
 
 class CREDS(object):

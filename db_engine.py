@@ -46,6 +46,10 @@ class DBConnection(object):
         result = bulk_op.find(query).upsert().update({"$set": data})
         return result
 
+    def add_to_bulk_upsert_push(self, query, field, value, bulk_op):
+        result = bulk_op.find(query).upsert().update({"$push": {field: value}})
+        return result
+
     def end_bulk_upsert(self, bulk_op):
         results = bulk_op.execute()
         return results
@@ -102,8 +106,12 @@ class DBConnection(object):
         else:
             return self.db[collection].find(filter=filter, projection=projection, no_cursor_timeout=True,  limit=limit)
 
-    def find_and_update(self, collection, query=None, update=None):
+    def find_and_update(self, collection, query=None, update=None, multi=False):
         result = self.db[collection].update_one(query, update)
+        return result
+
+    def update_many(self, collection, query=None, update=None):
+        result = self.db[collection].update_many(query, update)
         return result
 
     def increment_field(self, collection, query, field):
