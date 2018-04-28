@@ -211,6 +211,15 @@ class TWEET(object):
     FRAC_NOT_IN_DICT = 'frac_not_in_dict'
     RESOLVED_URLS = 'resolved_urls'
     TOPICS = 'topics'
+    ALMOST_DEFINITELY_TRUE_COUNT = "almost_definitely_true_count"
+    LIKELY_TO_BE_FALSE_COUNT = "likely_to_be_false_count"
+    ALMOST_DEFINITELY_FALSE_COUNT = "almost_definitely_false_count"
+    AMBIGUOUS_COUNT = "ambiguous_count"
+    AGGREGATE_LABEL = 'aggregate_label'
+    TOTAL_CROWDSOURCING_COUNT = "total_crowdsourcing_count"
+    EVIDENCE = "evidence"
+    CROWDSOURCING_SOURCE_LIST = "crowdsourcing_source_list"
+    CROWDSOURCING_AUTHOR_LIST = "crowdsourcing_author_list"
 
 
 class CREDS(object):

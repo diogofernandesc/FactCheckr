@@ -613,11 +613,31 @@ class FeatureExtractor(object):
 
         for topic in topics:
             tweet_bulk_op = self.db_connection.start_bulk_upsert(collection=DB.RELEVANT_TWEET_COLLECTION)
+            # matching_tweets = self.db_connection.find_document(collection=DB.RELEVANT_TWEET_COLLECTION,
+            #                                                    filter={"$and":[{"text": {"$regex": " %s | #%s " % topic["name"],
+            #                                                                     "$options": "-i"}},
+            #                                                                    {"text": {
+            #                                                                        "$regex": " #%s " % topic["name"],
+            #                                                                        "$options": "-i"}}]})
+
             matching_tweets = self.db_connection.find_document(collection=DB.RELEVANT_TWEET_COLLECTION,
-                                                               filter={"text": {"$regex": " %s " % topic["name"],
-                                                                                "$options": "-i"}})
+                                                               filter={"text": {"$regex": " %s | #%s |%s | %s|#%s | #%s" %
+                                                                                          (topic["name"], topic["name"],topic["name"],topic["name"],topic["name"],topic["name"]),
+                                                                             "$options": "-i"}})
+
+            # matching_tweets = self.db_connection.find_document(collection=DB.RELEVANT_TWEET_COLLECTION,
+            #                                                    filter={"text": {"$regex": " %s | #" % topic["name"],
+            #                                                                     "$options": "-i"}})
+
+
+            # matching_tweets1 = list(matching_tweets1)
+            #
+            # matching_tweets2 = self.db_connection.find_document(collection=DB.RELEVANT_TWEET_COLLECTION,
+            #                                                    filter={"text": {"$regex": " #%s " % topic["name"],
+            #                                                                     "$options": "-i"}})
 
             total = matching_tweets.count()
+            print total
             tweet_length = 0
             contains_qm = 0
             contains_em = 0
@@ -665,12 +685,14 @@ class FeatureExtractor(object):
             distinct_user_mentions = {}
             distinct_authors = {}
 
+            # total_tweets = list(matching_tweets1) + list(matching_tweets2)
+
             if total > 0:
                 for tweet in matching_tweets:
-                    self.db_connection.add_to_bulk_upsert_push(query={TWEET.ID: tweet["_id"]},
-                                                               field=TWEET.TOPICS,
-                                                               value={"_id": topic["_id"], TOPIC.IDENTIFIED_AS_TOPIC: topic[TOPIC.IDENTIFIED_AS_TOPIC]},
-                                                               bulk_op=tweet_bulk_op)
+                    self.db_connection.add_to_bulk_upsert_addtoset(query={TWEET.ID: tweet["_id"]},
+                                                                   field=TWEET.TOPICS,
+                                                                   value={"_id": topic["_id"], TOPIC.IDENTIFIED_AS_TOPIC: topic[TOPIC.IDENTIFIED_AS_TOPIC]},
+                                                                   bulk_op=tweet_bulk_op)
 
                                                                              # {"_id": topic["_id"],
                                                         # TOPIC.IDENTIFIED_AS_TOPIC: topic[TOPIC.IDENTIFIED_AS_TOPIC]}}},
@@ -889,6 +911,24 @@ class FeatureExtractor(object):
 
                 self.db_connection.end_bulk_upsert(bulk_op=tweet_bulk_op)
 
+    def get_topics_for_lost_tweets(self):
+        tweets = self.db_connection.find_document(collection=DB.RELEVANT_TWEET_COLLECTION,
+                                                  filter={"$and": [{"aggregate_label":{"$exists":True}},
+                                                                   {"topics":{"$exists":False}}]})
+
+        for tweet in tweets:
+            print tweet['text']
+            topic = raw_input("topic:\n")
+            possible_topic = self.db_connection.find_document(collection=DB.RELEVANT_TOPICS,
+                                                              filter={"name": topic.lower()})
+
+            if possible_topic.count() > 0:
+                found_topic = possible_topic.next()
+                self.db_connection.find_and_update(collection=DB.RELEVANT_TWEET_COLLECTION,
+                                                   query={"_id": tweet["_id"]},
+                                                   update={"$set": {"topics": [{"_id": found_topic["_id"],
+                                                                                TOPIC.IDENTIFIED_AS_TOPIC: found_topic[TOPIC.IDENTIFIED_AS_TOPIC]}]}})
+
 
 if __name__ == "__main__":
     ft = FeatureExtractor()
@@ -913,3 +953,4 @@ if __name__ == "__main__":
     #                                         filter={TOPIC.TWEET_COUNT: {"$exists": False}})
     topics = ft.db_connection.find_document(collection=DB.RELEVANT_TOPICS)
     ft.get_topic_features(topics=topics)
+    # ft.get_topics_for_lost_tweets()

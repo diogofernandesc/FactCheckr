@@ -50,6 +50,10 @@ class DBConnection(object):
         result = bulk_op.find(query).upsert().update({"$push": {field: value}})
         return result
 
+    def add_to_bulk_upsert_addtoset(self, query, field, value, bulk_op):
+        result = bulk_op.find(query).upsert().update({"$addToSet": {field: value}})
+        return result
+
     def end_bulk_upsert(self, bulk_op):
         results = bulk_op.execute()
         return results
@@ -147,7 +151,7 @@ class DBConnection(object):
 
     def get_random_sample(self, collection, query, size):
         result = self.db[collection].aggregate([
-            {"$match": query},{"$sample": {"size": size}
+            {"$match": query}, {"$sample": {"size": size}
         }])
         return result
 

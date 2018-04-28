@@ -149,8 +149,8 @@ if __name__ == "__main__":
     clf = Classifier()
     tweets = clf.db_connection.find_document(collection=DB.RELEVANT_TWEET_COLLECTION,
                                              filter={"$and":[{TWEET.SET_TO_FACTCHECK: True},
-                                                             {TWEET.LABEL: {"$exists": False}},
-                                                             {TWEET.TOPICS:{"$exists": True}}]})
+                                                             {TWEET.TOPICS:{"$exists": True}},
+                                                             {TWEET.AGGREGATE_LABEL: {"$exists": True}}]})
 
     print tweets.count()
     tweets = list(tweets)
