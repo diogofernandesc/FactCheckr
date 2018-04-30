@@ -1,3 +1,4 @@
+pyenchant
 pymongo
 requests
 bs4

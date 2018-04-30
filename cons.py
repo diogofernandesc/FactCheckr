@@ -109,6 +109,7 @@ class TOPIC(object):
     FRAC_CONTAINING_HAPPY_EMOJI = "frac_containing_happy_emoji"
     FRAC_CONTAINING_SAD_EMOJI = "frac_containing_sad_emoji"
     FRAC_CONTAINING_PRONOUNS = "frac_containing_pronouns"
+    FRAC_CONTAINING_FIGURES = "frac_containing_figures"
     FRAC_CONTAINING_UPPERCASE = "frac_containing_uppercase"
     FRAC_CONTAINING_URL = "frac_containing_url"
     FRAC_CONTAINING_USER_MENTION = "frac_containing_user_mention"
@@ -136,6 +137,7 @@ class TOPIC(object):
     AVERAGE_DAY_RELEVANCE = "avg_day_relevance"
     AVERAGE_WEEK_RELEVANCE = "avg_week_relevance"
     AVERAGE_2WEEK_RELEVANCE = "avg_2week_relevance"
+    AVERAGE_WORDS_NOT_IN_DICT = "avg_words_not_in_dict"
 
 
 
@@ -203,6 +205,22 @@ class TWEET(object):
     RELEVANCY_WEEK = 'relevancy_week'
     RELEVANCY_TWO_WEEKS = 'relevancy_2weeks'
     SET_TO_FACTCHECK = "set_to_factcheck"  # has been crowdsourced/analysed and decision made = True/False
+    LABEL = "label"
+    VERIFIED_URLS = "verified_urls_real"
+    CONTAINS_FIGURES = 'contains_figures'
+    FRAC_NOT_IN_DICT = 'frac_not_in_dict'
+    RESOLVED_URLS = 'resolved_urls'
+    TOPICS = 'topics'
+    ALMOST_DEFINITELY_TRUE_COUNT = "almost_definitely_true_count"
+    LIKELY_TO_BE_FALSE_COUNT = "likely_to_be_false_count"
+    ALMOST_DEFINITELY_FALSE_COUNT = "almost_definitely_false_count"
+    AMBIGUOUS_COUNT = "ambiguous_count"
+    AGGREGATE_LABEL = 'aggregate_label'
+    TOTAL_CROWDSOURCING_COUNT = "total_crowdsourcing_count"
+    EVIDENCE = "evidence"
+    CROWDSOURCING_SOURCE_LIST = "crowdsourcing_source_list"
+    CROWDSOURCING_AUTHOR_LIST = "crowdsourcing_author_list"
+    GOLDEN = "golden"
 
 
 class CREDS(object):
@@ -218,6 +236,11 @@ class CROWDFLOWER(object):
     FACTCHECKABLE_ANSWERS = "tick_the_box_of_the_tweets_that_are_politically_important_andor_worth_factchecking"
     TWEET_LIST = "tweet_list"
 
+
+class CLASSIFIER(object):
+    ALMOST_DEFINITELY_TRUE = 1
+    LIKELY_TO_BE_FALSE = -1
+    ALMOST_DEFINITELY_FALSE = -1
 
 class TIME_INTERVAL(object):
     DAY = 86400

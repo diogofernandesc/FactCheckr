@@ -46,6 +46,14 @@ class DBConnection(object):
         result = bulk_op.find(query).upsert().update({"$set": data})
         return result
 
+    def add_to_bulk_upsert_push(self, query, field, value, bulk_op):
+        result = bulk_op.find(query).upsert().update({"$push": {field: value}})
+        return result
+
+    def add_to_bulk_upsert_addtoset(self, query, field, value, bulk_op):
+        result = bulk_op.find(query).upsert().update({"$addToSet": {field: value}})
+        return result
+
     def end_bulk_upsert(self, bulk_op):
         results = bulk_op.execute()
         return results
@@ -102,8 +110,12 @@ class DBConnection(object):
         else:
             return self.db[collection].find(filter=filter, projection=projection, no_cursor_timeout=True,  limit=limit)
 
-    def find_and_update(self, collection, query=None, update=None):
+    def find_and_update(self, collection, query=None, update=None, multi=False):
         result = self.db[collection].update_one(query, update)
+        return result
+
+    def update_many(self, collection, query=None, update=None):
+        result = self.db[collection].update_many(query, update)
         return result
 
     def increment_field(self, collection, query, field):
@@ -132,12 +144,16 @@ class DBConnection(object):
     def delete_tweet(self, tweet_id):
         tweet_data = self.db.mp_tweets
         result = tweet_data.delete_one({'_id': tweet_id})
-        print result.deleted_count
 
     def delete_tweets_by_id(self, tweet_ids):
         tweet_data = self.db.mp_tweets
         result = tweet_data.delete_many({"_id": {"$in": [tweet_ids]}})
-        print result.deleted_count
+
+    def get_random_sample(self, collection, query, size):
+        result = self.db[collection].aggregate([
+            {"$match": query}, {"$sample": {"size": size}
+        }])
+        return result
 
     def close(self):
         self.client.close()
