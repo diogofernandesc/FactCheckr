@@ -90,7 +90,6 @@ class Twitter(object):
         self.db_connection.bulk_insert(data=trends_to_insert, collection=DB.TWITTER_TRENDS)
         logger.info("Inserted twitter trends for: %s/%s/2018" % (day, month))
 
-
     def get_trends(self, location=WOEIDS.UK, globally=False):
         """
         Collect trends based on Location given by woeid: http://woeid.rosselliot.co.nz/lookup
@@ -178,11 +177,13 @@ class Twitter(object):
                                                       since_id=newest_id,
                                                       )
 
+
             # Sort tweets by oldest first
             raw_tweets = sorted(raw_tweets, key=lambda tweet: (tweet.created_at_in_seconds))
             # raw_tweets = raw_tweets[::-1]
 
             if not raw_tweets or len(raw_tweets) == 1 or len(raw_tweets) == 2 or raw_tweets[0].id in tracked_ids:  # Break if API limit reached
+
                 break
 
             tweets_collected += len(raw_tweets)

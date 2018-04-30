@@ -141,6 +141,7 @@ class DBConnection(object):
         tweet_data = self.db.mp_tweets
         result = tweet_data.update_one(filter={"_id": tweet_id}, update={"$set": update}, upsert=False)
 
+
     def delete_tweet(self, tweet_id):
         tweet_data = self.db.mp_tweets
         result = tweet_data.delete_one({'_id': tweet_id})
