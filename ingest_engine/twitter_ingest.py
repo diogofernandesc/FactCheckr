@@ -2,7 +2,9 @@ import calendar
 import sys
 
 import re
+from operator import itemgetter
 
+import requests
 from urllib3.exceptions import NewConnectionError
 
 sys.path.append("..")
@@ -15,6 +17,7 @@ import time
 from datetime import datetime
 import logging
 from requests.exceptions import ConnectionError
+from bs4 import BeautifulSoup
 
 
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
@@ -29,6 +32,7 @@ class Twitter(object):
         self.consumer_secret = consumer_secret
         self.access_token_key = access_token_key
         self.access_token_secret = access_token_secret
+        self.session = requests.session()
         self.api = twitter.Api(
             consumer_key=self.consumer_key,
             consumer_secret=self.consumer_secret,
@@ -57,6 +61,34 @@ class Twitter(object):
         html = self.api.GetStatusOembed(status_id=status_id)['html']
         self.db_connection.update_tweet(tweet_id=status_id, update={"html": html})
         return html
+
+    def get_status(self, tweet_id):
+        return self.api.GetStatus(status_id=tweet_id)
+
+    def get_historic_trends(self, month, day):
+        trends_to_insert = []
+        link = "https://trendogate.com/placebydate/23424975/2018-%s-%s" % (month, day)
+        response = self.session.get(link)
+        if response.status_code == 200:
+            page = response.content
+        else:
+            raise requests.ConnectionError("Couldn't connect to that URL.")
+
+        soup = BeautifulSoup(page, 'html.parser')
+        # for ultag in soup.find_all('ul', {'class': 'my_class'}):
+        for entry in soup.findAll('ul', {'class': 'list-group'}):
+            for litag in entry.find_all('li'):
+                date = datetime(year=2018, month=month, day=day, hour=12)
+                trend_doc = {
+                    TWITTER_TREND.NAME: litag.text,
+                    TWITTER_TREND.TIMESTAMP: date,
+                    TWITTER_TREND.TIMESTAMP_EPOCH: calendar.timegm(date.timetuple()),
+                    TWITTER_TREND.LOCATION: "United Kingdom",
+                }
+                trends_to_insert.append(trend_doc)
+
+        self.db_connection.bulk_insert(data=trends_to_insert, collection=DB.TWITTER_TRENDS)
+        logger.info("Inserted twitter trends for: %s/%s/2018" % (day, month))
 
     def get_trends(self, location=WOEIDS.UK, globally=False):
         """
@@ -115,6 +147,7 @@ class Twitter(object):
         twitter_handle = mp_doc[MP.TWITTER_HANDLE]
         tweet_count = mp_doc[MP.TWEET_COUNT]
         tweets_collected = mp_doc[MP.TWEETS_COLLECTED]
+        tracked_ids = []
         if MP.OLDEST_ID in mp_doc:
             oldest_id = mp_doc[MP.OLDEST_ID]
 
@@ -143,13 +176,19 @@ class Twitter(object):
                                                       include_rts=True,
                                                       since_id=newest_id,
                                                       )
-            raw_tweets = raw_tweets[::-1]
 
-            if not raw_tweets or len(raw_tweets) == 1:  # Break if API limit reached
+
+            # Sort tweets by oldest first
+            raw_tweets = sorted(raw_tweets, key=lambda tweet: (tweet.created_at_in_seconds))
+            # raw_tweets = raw_tweets[::-1]
+
+            if not raw_tweets or len(raw_tweets) == 1 or len(raw_tweets) == 2 or raw_tweets[0].id in tracked_ids:  # Break if API limit reached
+
                 break
 
             tweets_collected += len(raw_tweets)
             for raw_tweet in raw_tweets:
+                tracked_ids.append(raw_tweet.id)
                 retweet = False
 
                 # Tweet count
@@ -217,11 +256,13 @@ class Twitter(object):
                 else:
                     tweet_list.append(formatted_tweet)
 
-        if tweet_list:
-            self.db_connection.insert_tweets(tweet_list)
+            if tweet_list:
+                self.db_connection.insert_tweets(tweet_list)
+                tweet_list = []
 
-        if retweet_list:
-            self.db_connection.insert_tweets(tweet_list=retweet_list, retweets=True)
+            if retweet_list:
+                self.db_connection.insert_tweets(tweet_list=retweet_list, retweets=True)
+                retweet_list = []
 
         if historic:
             self.db_connection.update_mp(user_id=user_id, update={MP.OLDEST_ID: oldest_id,
@@ -434,11 +475,12 @@ class Twitter(object):
                                               projection={"twitter_handle": 1, "oldest_id": 1,
                                                           "newest_id": 1, "tweet_count": 1, "tweets_collected": 1})
         for mp in mp_list:
-            self.logger.info("Updating ALL tweets for: %s" % mp["twitter_handle"])
-            self.get_tweets(mp_doc=mp, historic=historic)
+            if "twitter_handle" in mp:
+                self.logger.info("Updating ALL tweets for: %s" % mp["twitter_handle"])
+                self.get_tweets(mp_doc=mp, historic=historic)
 
         mp_list.close()
-
+        logger.info("Tweet ingest complete")
 
 def main():
     db_connection = DBConnection()
@@ -449,6 +491,20 @@ def main():
                           db_connection)
 
     if "trends" in sys.argv:
+        if "historic" in sys.argv:
+            date = datetime.today()
+            day_end = date.day - 1
+            month_end = date.month
+            month = 1
+            day = 2
+            while month != month_end or day != day_end:
+                twitter_api.get_historic_trends(month=month, day=day)
+                time.sleep(3)
+                day += 1
+                if day % 30 == 0:
+                    month += 1
+                    day = 1
+
         globally = "global" in sys.argv
         is_uk = "UK" in sys.argv
 
@@ -467,7 +523,6 @@ def main():
             if historic:
                 break
 
-            time.sleep(60*60*24)
 
 
 if __name__ == "__main__":

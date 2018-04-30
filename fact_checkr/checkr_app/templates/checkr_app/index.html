@@ -49,9 +49,10 @@
                         </li>
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" id="navbarDropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Browse</a>
-                            <div class="dropdown-menu dropdown-primary" aria-labelledby="navbarDropdownMenuLink">
+                            <div class="dropdown-menu dropdown-primary" aria-labelledby="navbarDropdownMenuLink">l
                                 <a class="dropdown-item" href="{% url 'checkr_app:index' %}">Tweets</a>
                                 <a class="dropdown-item" href="{% url 'checkr_app:view_mps' %}">Members of Parliament</a>
+
                             </div>
                         </li>
                         <li class="nav-item">
@@ -66,6 +67,7 @@
                         <div class="md-form mt-0">
                             <input class="form-control mr-sm-2" type="text" name="mp_search" placeholder="Search for an MP" aria-label="Search">
                         </div>
+
                     </form>
 
                 </div>
@@ -133,6 +135,7 @@
             <!--Section: Cards-->
             <section class="pt-3">
             {% if tweet_list %}
+
               {% for tweet in tweet_list %}
                 {% if forloop.first %}
                 <!--Grid row-->

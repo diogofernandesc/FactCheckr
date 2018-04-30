@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+
 import json
 
 from bson.objectid import ObjectId
@@ -22,6 +23,7 @@ twitter_api = Twitter(os.environ.get(CREDS.TWITTER_KEY),
 
 
 def index(request):
+
     if 'mp_search' in request.GET:
         mp_name = request.GET['mp_search']
         mp_list = MemberParliament.objects.filter(name__contains=mp_name.title())
@@ -34,6 +36,7 @@ def index(request):
             html = twitter_api.get_embed(tweet.id)
 
     return render(request, 'checkr_app/index.html', {'tweet_list': tweet_list})
+
 
 
 def view_mps(request):
@@ -65,4 +68,3 @@ def autocompleteModel(request):
         results.append(r.name)
     resp = request.REQUEST['callback'] + '(' + json.dumps(results) + ');'
     return HttpResponse(resp, content_type='application/json')
-

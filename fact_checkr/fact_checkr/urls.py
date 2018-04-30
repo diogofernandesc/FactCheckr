@@ -4,4 +4,4 @@ from django.contrib import admin
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'^', include('checkr_app.urls', namespace="checkr_app"))
-]
+

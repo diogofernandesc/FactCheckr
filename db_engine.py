@@ -2,6 +2,7 @@ import logging
 import os
 
 from pymongo import MongoClient, bulk
+from pymongo.errors import DuplicateKeyError
 
 from cons import DB
 
@@ -36,6 +37,33 @@ class DBConnection(object):
 
         except Exception as e:
             self.logger.info("Duplicate insertion ignored")
+
+    def start_bulk_upsert(self, collection):
+        bulk = self.db[collection].initialize_ordered_bulk_op()
+        return bulk
+
+    def add_to_bulk_upsert(self, query, data, bulk_op):
+        result = bulk_op.find(query).upsert().update({"$set": data})
+        return result
+
+    def add_to_bulk_upsert_push(self, query, field, value, bulk_op):
+        result = bulk_op.find(query).upsert().update({"$push": {field: value}})
+        return result
+
+    def add_to_bulk_upsert_addtoset(self, query, field, value, bulk_op):
+        result = bulk_op.find(query).upsert().update({"$addToSet": {field: value}})
+        return result
+
+    def end_bulk_upsert(self, bulk_op):
+        results = bulk_op.execute()
+        return results
+
+    def insert_news_article(self, article):
+        news_collection = self.db.news_articles
+        try:
+            result = news_collection.update_one(filter={"url": article["url"]}, update={"$set": article}, upsert=True)
+        except DuplicateKeyError as e:
+            pass
 
     def bulk_insert(self, data, collection):
         """
@@ -75,12 +103,23 @@ class DBConnection(object):
         except self.client.BulkWriteError as bwe:
             self.logger.warning(bwe.details)
 
-    def find_document(self, collection, filter=None, projection=None, limit=0):
-        return self.db[collection].find(filter=filter, projection=projection, no_cursor_timeout=True, limit=limit)
+    def find_document(self, collection, filter=None, projection=None, limit=0, sort=False, sort_field=None):
+        if sort:
+            return self.db[collection].find(filter=filter, projection=projection, no_cursor_timeout=True,
+                                            limit=limit).sort(sort_field, -1)
+        else:
+            return self.db[collection].find(filter=filter, projection=projection, no_cursor_timeout=True,  limit=limit)
 
-    def find_and_update(self, collection, query=None, update=None):
+    def find_and_update(self, collection, query=None, update=None, multi=False):
         result = self.db[collection].update_one(query, update)
         return result
+
+    def update_many(self, collection, query=None, update=None):
+        result = self.db[collection].update_many(query, update)
+        return result
+
+    def increment_field(self, collection, query, field):
+        result = self.db[collection].update_one(query, update={"$inc": {field: 1}}, upsert=True)
 
     def create_mp(self, data):
         mp_data = self.db.mp_data
@@ -101,7 +140,21 @@ class DBConnection(object):
     def update_tweet(self, tweet_id, update):
         tweet_data = self.db.mp_tweets
         result = tweet_data.update_one(filter={"_id": tweet_id}, update={"$set": update}, upsert=False)
-        print result
+
+
+    def delete_tweet(self, tweet_id):
+        tweet_data = self.db.mp_tweets
+        result = tweet_data.delete_one({'_id': tweet_id})
+
+    def delete_tweets_by_id(self, tweet_ids):
+        tweet_data = self.db.mp_tweets
+        result = tweet_data.delete_many({"_id": {"$in": [tweet_ids]}})
+
+    def get_random_sample(self, collection, query, size):
+        result = self.db[collection].aggregate([
+            {"$match": query}, {"$sample": {"size": size}
+        }])
+        return result
 
     def close(self):
         self.client.close()
