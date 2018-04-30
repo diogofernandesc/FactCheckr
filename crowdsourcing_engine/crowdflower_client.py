@@ -368,23 +368,121 @@ class CrowdFlower(object):
         # index_resolver = {
         #     "tweet1": res
         # }
-        page_no = 1
+        page_no = 2
         tp = 0
         tn = 0
         fp = 0
         fn = 0
+
         results = self.judgements_session.get(
             url="https://api.figure-eight.com/v1/jobs/%s/judgments.json?key=%s&page=%s" %
                 (job_id, self.api_key, page_no))
 
         content = json.loads(results.content)
+        total_judgements = 0
         for key, result in content.iteritems():
-            for tweet in result['tweet_list']:
-                print tweet
+            labels = result['tick_the_box_of_the_tweets_that_are_politically_important_andor_worth_factchecking']['res']
+            for entry in labels:
+                all_tweets = ["tweet1","tweet2","tweet3","tweet4","tweet5","tweet6","tweet7","tweet8","tweet9","tweet10"]
+                for tweet_value in entry:
+                    tweet = self.index_resolver(list_to_check=result['tweet_list'], value=tweet_value)
+                    verdict = self.db_connection.find_document(collection=DB.RELEVANT_TWEET_COLLECTION,
+                                                               filter={"text": tweet},
+                                                 projection={TWEET.SET_TO_FACTCHECK: 1}).next()
+
+                    if TWEET.SET_TO_FACTCHECK not in verdict:
+                        verdict = False
+
+                    else:
+                        verdict = verdict[TWEET.SET_TO_FACTCHECK]
+
+                    if verdict:
+                        tp += 1
+
+                    else:
+                        fp += 1
+
+                    all_tweets.remove(tweet_value)
+                    total_judgements += 1
+
+                for tweet_value in all_tweets:
+                    tweet = self.index_resolver(list_to_check=result['tweet_list'], value=tweet_value)
+                    verdict = self.db_connection.find_document(collection=DB.RELEVANT_TWEET_COLLECTION,
+                                                               filter={"text": tweet},
+                                                projection={TWEET.SET_TO_FACTCHECK: 1}).next()
+
+                    if TWEET.SET_TO_FACTCHECK not in verdict:
+                        verdict = False
+
+                    else:
+                        verdict = verdict[TWEET.SET_TO_FACTCHECK]
+
+
+                    if verdict:
+                        fn += 1
+
+                    else:
+                        tn += 1
+
+        print "tp: %s" % tp
+        print "tn: %s" % tn
+        print "fp: %s" % fp
+        print "fn: %s" % fn
+        print "total judgements: %s" % total_judgements
 
 
             # for value in result["tick_the_box_of_the_tweets_that_are_politically_important_andor_worth_factchecking"]["res"]:
 
+    def evaluate_factchecking(self, job_id):
+        page_no = 4
+        tp = 0
+        tn = 0
+        fp = 0
+        fn = 0
+        index_resolver = {
+            'almost_definitely_true': 1,
+            'likely_to_be_false': 0,
+            'almost_definitely_false': 0,
+            'very_ambiguous__i_really_cant_decide': -1
+        }
+
+        results = self.judgements_session.get(
+            url="https://api.figure-eight.com/v1/jobs/%s/judgments.json?key=%s&page=%s" %
+                (job_id, self.api_key, page_no))
+
+        content = json.loads(results.content)
+        total_judgements = 0
+        for key, result in content.iteritems():
+            tweet = result['tweet']
+            print tweet
+            ratings = result['rating']['res']
+            print ratings
+            verdict = raw_input("Is the tweet true?\n")
+            verdict = verdict == "y"
+            for rating in ratings:
+
+                judgement = index_resolver.get(rating)
+                if verdict:
+                    if judgement == 1:
+                        tp += 1
+
+                    elif judgement == 0:
+                        fn += 1
+
+                else:
+                    if judgement == 1:
+                        fp += 1
+
+                    elif judgement == 0:
+                        tn += 1
+
+                total_judgements += 1
+
+        print "tp: %s" % tp
+        print "tn: %s" % tn
+        print "fp: %s" % fp
+        print "fn: %s" % fn
+        print "total judgements: %s" % total_judgements
 
     def index_resolver(self, list_to_check, value):
         resolver = {
@@ -402,10 +500,252 @@ class CrowdFlower(object):
 
         return resolver.get(value)
 
+    def evaluate_worker_background(self):
+        countries = {}
+        total = 0
+        with open("background.txt") as f:
+            for line in f:
+                total += 1
+                if line not in countries:
+                    countries[line] = 1
 
+                else:
+                    countries[line] = countries[line] + 1
 
+        print countries
+        print "bnt"
 
+    def evalute_factchecking_info(self, job_id1, job_id2):
+        almost_definitely_true_count = 0
+        likely_to_be_false_count = 0
+        almost_definitely_false_count = 0
+        ambiguous_count = 0
+        page_no = 1
+        results1 = self.judgements_session.get(
+            url="https://api.figure-eight.com/v1/jobs/%s/judgments.json?key=%s&page=%s" %
+                (job_id1, self.api_key, 1))
 
+        results2 = self.judgements_session.get(
+            url="https://api.figure-eight.com/v1/jobs/%s/judgments.json?key=%s&page=%s" %
+                (job_id2, self.api_key, 1))
+
+        results3 = self.judgements_session.get(
+            url="https://api.figure-eight.com/v1/jobs/%s/judgments.json?key=%s&page=%s" %
+                (job_id1, self.api_key, 2))
+
+        results4 = self.judgements_session.get(
+            url="https://api.figure-eight.com/v1/jobs/%s/judgments.json?key=%s&page=%s" %
+                (job_id2, self.api_key, 2))
+
+        results5 = self.judgements_session.get(
+            url="https://api.figure-eight.com/v1/jobs/%s/judgments.json?key=%s&page=%s" %
+                (job_id1, self.api_key, 3))
+
+        results6 = self.judgements_session.get(
+            url="https://api.figure-eight.com/v1/jobs/%s/judgments.json?key=%s&page=%s" %
+                (job_id2, self.api_key, 3))
+
+        content1 = json.loads(results1.content)
+        content2 = json.loads(results2.content)
+        content3 = json.loads(results3.content)
+        content4 = json.loads(results4.content)
+        content5 = json.loads(results5.content)
+        content6 = json.loads(results6.content)
+        final_source_dict = {}
+        final_author_dict = {}
+        for key, result in content1.iteritems():
+            source_list = result['source']
+            author_list = result['author']
+            # for source in source_list:
+            #     source = source.split("//")[1].split(".")[0]
+            #     if source not in final_source_dict:
+            #         final_source_dict[source] = 1
+            #
+            #     else:
+            #         final_source_dict[source] = final_source_dict[source] + 1
+            #
+            # for author in author_list:
+            #     author = author.encode('ascii', 'ignore')
+            #     if author not in final_author_dict:
+            #         final_author_dict[author] = 1
+            #
+            #     else:
+            #         final_author_dict[author] = final_author_dict[author] + 1
+
+            for value in result['rating']['res']:
+                if value == 'almost_definitely_true':
+                    almost_definitely_true_count += 1
+
+                elif value == 'likely_to_be_false':
+                    likely_to_be_false_count += 1
+
+                elif value == 'almost_definitely_false':
+                    almost_definitely_false_count += 1
+
+                elif value == 'very_ambiguous__i_really_cant_decide':
+                    ambiguous_count += 1
+
+        for key, result in content2.iteritems():
+            source_list = result['source']
+            author_list = result['author']
+            # for source in source_list:
+            #     source = source.split("//")[1].split(".")[0]
+            #     if source not in final_source_dict:
+            #         final_source_dict[source] = 1
+            #
+            #     else:
+            #         final_source_dict[source] = final_source_dict[source] + 1
+            #
+            # for author in author_list:
+            #     author = author.encode('ascii', 'ignore')
+            #     if author not in final_author_dict:
+            #         final_author_dict[author] = 1
+            #
+            #     else:
+            #         final_author_dict[author] = final_author_dict[author] + 1
+
+            for value in result['rating']['res']:
+                if value == 'almost_definitely_true':
+                    almost_definitely_true_count += 1
+
+                elif value == 'likely_to_be_false':
+                    likely_to_be_false_count += 1
+
+                elif value == 'almost_definitely_false':
+                    almost_definitely_false_count += 1
+
+                elif value == 'very_ambiguous__i_really_cant_decide':
+                    ambiguous_count += 1
+
+        for key, result in content3.iteritems():
+            source_list = result['source']
+            author_list = result['author']
+            # for source in source_list:
+            #     source = source.split("//")[1].split(".")[0]
+            #     if source not in final_source_dict:
+            #         final_source_dict[source] = 1
+            #
+            #     else:
+            #         final_source_dict[source] = final_source_dict[source] + 1
+            #
+            # for author in author_list:
+            #     author = author.encode('ascii', 'ignore')
+            #     if author not in final_author_dict:
+            #         final_author_dict[author] = 1
+            #
+            #     else:
+            #         final_author_dict[author] = final_author_dict[author] + 1
+
+            for value in result['rating']['res']:
+                if value == 'almost_definitely_true':
+                    almost_definitely_true_count += 1
+
+                elif value == 'likely_to_be_false':
+                    likely_to_be_false_count += 1
+
+                elif value == 'almost_definitely_false':
+                    almost_definitely_false_count += 1
+
+                elif value == 'very_ambiguous__i_really_cant_decide':
+                    ambiguous_count += 1
+
+        for key, result in content4.iteritems():
+            source_list = result['source']
+            author_list = result['author']
+            # for source in source_list:
+            #     source = source.split("//")[1].split(".")[0]
+            #     if source not in final_source_dict:
+            #         final_source_dict[source] = 1
+            #
+            #     else:
+            #         final_source_dict[source] = final_source_dict[source] + 1
+            #
+            # for author in author_list:
+            #     author = author.encode('ascii', 'ignore')
+            #     if author not in final_author_dict:
+            #         final_author_dict[author] = 1
+            #
+            #     else:
+            #         final_author_dict[author] = final_author_dict[author] + 1
+
+            for value in result['rating']['res']:
+                if value == 'almost_definitely_true':
+                    almost_definitely_true_count += 1
+
+                elif value == 'likely_to_be_false':
+                    likely_to_be_false_count += 1
+
+                elif value == 'almost_definitely_false':
+                    almost_definitely_false_count += 1
+
+                elif value == 'very_ambiguous__i_really_cant_decide':
+                    ambiguous_count += 1
+
+        for key, result in content5.iteritems():
+            source_list = result['source']
+            author_list = result['author']
+            # for source in source_list:
+            #     source = source.split("//")[1].split(".")[0]
+            #     if source not in final_source_dict:
+            #         final_source_dict[source] = 1
+            #
+            #     else:
+            #         final_source_dict[source] = final_source_dict[source] + 1
+            #
+            # for author in author_list:
+            #     author = author.encode('ascii', 'ignore')
+            #     if author not in final_author_dict:
+            #         final_author_dict[author] = 1
+            #
+            #     else:
+            #         final_author_dict[author] = final_author_dict[author] + 1
+
+            for value in result['rating']['res']:
+                if value == 'almost_definitely_true':
+                    almost_definitely_true_count += 1
+
+                elif value == 'likely_to_be_false':
+                    likely_to_be_false_count += 1
+
+                elif value == 'almost_definitely_false':
+                    almost_definitely_false_count += 1
+
+                elif value == 'very_ambiguous__i_really_cant_decide':
+                    ambiguous_count += 1
+
+        for key, result in content6.iteritems():
+            source_list = result['source']
+            author_list = result['author']
+            # for source in source_list:
+            #     source = source.split("//")[1].split(".")[0]
+            #     if source not in final_source_dict:
+            #         final_source_dict[source] = 1
+            #
+            #     else:
+            #         final_source_dict[source] = final_source_dict[source] + 1
+            #
+            # for author in author_list:
+            #     author = author.encode('ascii', 'ignore')
+            #     if author not in final_author_dict:
+            #         final_author_dict[author] = 1
+            #
+            #     else:
+            #         final_author_dict[author] = final_author_dict[author] + 1
+
+            for value in result['rating']['res']:
+                if value == 'almost_definitely_true':
+                    almost_definitely_true_count += 1
+
+                elif value == 'likely_to_be_false':
+                    likely_to_be_false_count += 1
+
+                elif value == 'almost_definitely_false':
+                    almost_definitely_false_count += 1
+
+                elif value == 'very_ambiguous__i_really_cant_decide':
+                    ambiguous_count += 1
+
+        print "bant"
 
 
 
@@ -418,4 +758,7 @@ cf = CrowdFlower()
 # cf.fact_checking_processing(job_id=1260144)
 # cf.get_fact_opinion(job_id=1257130)
 # cf.get_factchecking_judgements(job_id=1260770)
-cf.evaluate_interesting_statements(job_id=1257130)
+# cf.evaluate_interesting_statements(job_id=1257130)
+# cf.evaluate_factchecking(job_id=1260770)
+# cf.evaluate_worker_background()
+cf.evalute_factchecking_info(job_id1=1260770, job_id2=1260144)

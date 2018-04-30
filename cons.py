@@ -220,6 +220,7 @@ class TWEET(object):
     EVIDENCE = "evidence"
     CROWDSOURCING_SOURCE_LIST = "crowdsourcing_source_list"
     CROWDSOURCING_AUTHOR_LIST = "crowdsourcing_author_list"
+    GOLDEN = "golden"
 
 
 class CREDS(object):

@@ -225,6 +225,9 @@ from nltk.tokenize import word_tokenize
 
 
 
+import matplotlib.pyplot as plt
+from matplotlib import rcParams
+from itertools import cycle
 
 
 class TopicModel(object):
@@ -318,15 +321,118 @@ class TopicModel(object):
                                                        field=TOPIC.IDENTIFIED_AS_TOPIC)
 
 
+    def evaluate(self, mp_id):
+        '''
+        Topic model by MP
+        :return:
+        '''
+
+        tweet_docs = []
+        tweets = self.db_connection.find_document(collection=DB.RELEVANT_TWEET_COLLECTION,
+                                                  filter={"author_id": mp_id["_id"]}, projection={"text": 1})
+
+        tweet_count = tweets.count()
+        if tweets.count() > 0:
+            for tweet in tweets:
+                tweet_docs.append(self.clean_tweet(tweet))
+
+            # dictionary = gensim.corpora.Dictionary(gen_docs)
+            # corpus = [dictionary.doc2bow(gen_doc) for gen_doc in gen_docs]
+            # tf_idf = gensim.models.TfidfModel(corpus)
+
+            gen_docs = [[w.lower() for w in word_tokenize(tweet['text'].lower())] for tweet in tweet_docs]
+            dictionary = corpora.Dictionary(gen_docs)
+            # dictionary.save(os.path.join(TEMP_FOLDER, 'elon.dict'))  # store the dictionary, for future reference
+
+            corpus = [dictionary.doc2bow(gen_doc) for gen_doc in gen_docs]
+            # corpora.MmCorpus.serialize()
+            # corpora.MmCorpus.serialize(os.path.join(TEMP_FOLDER, 'elon.mm'), corpus)  # store to disk, for later use
+
+            tfidf = models.TfidfModel(corpus)  # step 1 -- initialize a model
+            corpus_tfidf = tfidf[corpus]
+
+            total_topics = 5
+
+            total_topic_aggregation = 2
+            i = 0
+            possible_topics = []
+
+            model1 = models.LdaModel(corpus, id2word=dictionary,num_topics=5)
+            model2 = models.LdaModel(corpus, id2word=dictionary, num_topics=10)
+            model3 = models.LdaModel(corpus, id2word=dictionary, num_topics=20)
+            model4 = models.LdaModel(corpus, id2word=dictionary, num_topics=30)
+            model5 = models.LdaModel(corpus, id2word=dictionary, num_topics=40)
+            model6 = models.LdaModel(corpus, id2word=dictionary, num_topics=50)
+            model7 = models.LdaModel(corpus, id2word=dictionary, num_topics=60)
+            model8 = models.LdaModel(corpus, id2word=dictionary, num_topics=70)
+            model9 = models.LdaModel(corpus, id2word=dictionary, num_topics=80)
+            model10 = models.LdaModel(corpus, id2word=dictionary, num_topics=90)
+            model11 = models.LdaModel(corpus, id2word=dictionary, num_topics=100)
+
+            # perplexity = model.bound(corpus=corpus, subsample_ratio=tweet_count/61152)
+            perplexity1 = model1.bound(corpus=corpus, subsample_ratio=tweet_count / 61152)
+            perplexity2 = model2.bound(corpus=corpus, subsample_ratio=tweet_count / 61152)
+            perplexity3 = model3.bound(corpus=corpus, subsample_ratio=tweet_count / 61152)
+            perplexity4 = model4.bound(corpus=corpus, subsample_ratio=tweet_count / 61152)
+            perplexity5 = model5.bound(corpus=corpus, subsample_ratio=tweet_count / 61152)
+            perplexity6 = model6.bound(corpus=corpus, subsample_ratio=tweet_count / 61152)
+            perplexity7 = model7.bound(corpus=corpus, subsample_ratio=tweet_count / 61152)
+            perplexity8 = model8.bound(corpus=corpus, subsample_ratio=tweet_count / 61152)
+            perplexity9 = model9.bound(corpus=corpus, subsample_ratio=tweet_count / 61152)
+            perplexity10 = model10.bound(corpus=corpus, subsample_ratio=tweet_count / 61152)
+            perplexity11 = model11.bound(corpus=corpus, subsample_ratio=tweet_count / 61152)
+
+            return [[perplexity1,
+                     perplexity2,
+                     perplexity3,
+                     perplexity4,
+                     perplexity5,
+                     perplexity6,
+                     perplexity7,
+                     perplexity8,
+                     perplexity9,
+                     perplexity10,
+                     perplexity11],
+                    [5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100], mp["name"]]
+
+
+
+
+
 
 if __name__ == "__main__":
+    perplexity = []
+    topic_count = []
+    rcParams.update({'figure.autolayout': True})
+
+
+    lines = ["-", "--", "-.", ":", ".:"]
+    linecycler = cycle(lines)
+    # plt.gcf().subplots_adjust(left=0.15)
+    fig = plt.figure()
+    ax = plt.subplot(111)
     # topic_modelling = TopicModelling()
     tm = TopicModel()
     # tm.model(mp_id=117777690)
-    all_mps = tm.db_connection.find_document(collection=DB.MP_COLLECTION, filter={MP.TOPICS: {"$exists": False}},
-                                             projection={"name": 1})
+    all_mps = tm.db_connection.find_document(collection=DB.MP_COLLECTION,
+                                             projection={"name": 1,
+                                                         "topics": 1},limit=5, sort=True, sort_field=MP.FOLLOWERS_COUNT)
     for mp in all_mps:
-        tm.model(mp_id=mp["_id"])
+        values = tm.evaluate(mp)
+        if values:
+            ax.plot(values[1], values[0], next(linecycler), label=values[2])
+            # perplexity.append(values[0])
+            # topic_count.append(values[1])
+
+    # plt.plot(topic_count, perplexity)
+
+
+    plt.ylabel("Perplexity")
+    plt.xlabel('Number of topics')
+    ax.legend()
+    fig.show()
+    fig.savefig('chart.png')
+        # tm.model(mp_id=mp["_id"])
     # topics = topic_modelling.get_top_topics()
     # print topics
 

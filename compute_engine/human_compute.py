@@ -1,3 +1,4 @@
+from __future__ import division
 from db_engine import DBConnection
 from cons import DB, TWEET
 
@@ -141,6 +142,33 @@ class Human(object):
             print "fp: %s" % fp
             print "fn: %s" % fn
 
+    def mp_evaluation(self):
+        total_rank = 0
+        topic_count = 0
+        mp_topics = self.db_connection.find_document(collection=DB.MP_COLLECTION, filter={"topics":{"$exists":True}},projection={"topics": 1})
+        for topics in mp_topics:
+            for topic in topics["topics"]:
+                average_rank = 0
+                rank = self.db_connection.find_document(collection=DB.RELEVANT_TOPICS, filter={"name": topic},
+                                                        projection={"identified_as_topic": 1})
+
+                for item in rank:
+                    average_rank += item["identified_as_topic"]
+
+
+                # for item in rank:
+                    # print item
+                # average_rank += rank
+
+            total_rank += average_rank / len(topics['topics'])
+            # print "b"
+
+            # topic_count += len(topics["topics"])
+        count = mp_topics.count()
+        print total_rank / count
+        print topic_count
+
 human = Human()
 # human.label(label=True)
-human.entity_measure()
+# human.entity_measure()
+human.mp_evaluation()
