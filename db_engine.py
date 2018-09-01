@@ -138,7 +138,7 @@ class DBConnection(object):
         # self.bulkWrite.append(result)
 
     def update_tweet(self, tweet_id, update):
-        tweet_data = self.db.mp_tweets
+        tweet_data = self.db.relevant_mp_tweets
         result = tweet_data.update_one(filter={"_id": tweet_id}, update={"$set": update}, upsert=False)
 
 

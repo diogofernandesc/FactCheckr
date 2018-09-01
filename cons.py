@@ -95,6 +95,8 @@ class MP(object):
     TOPICS = "topics"
     CREATED_AT = "created_at"
     CREATED_AT_EPOCH = "created_at_epoch"
+    FACTUAL_SCORE = "factual_score"
+    NO_FACT_CHECKED_TWEETS = "no_fact_checked_tweets"
 
 
 class TOPIC(object):
@@ -221,7 +223,9 @@ class TWEET(object):
     CROWDSOURCING_SOURCE_LIST = "crowdsourcing_source_list"
     CROWDSOURCING_AUTHOR_LIST = "crowdsourcing_author_list"
     GOLDEN = "golden"
-
+    CONFIDENCE_SCORE = "confidence_score"
+    PREDICTED_VERDICT = "predicted_verdict"
+    HTML = "html"
 
 class CREDS(object):
     TWITTER_KEY = "TWITTER_KEY"

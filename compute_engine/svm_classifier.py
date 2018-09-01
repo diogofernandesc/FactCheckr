@@ -25,6 +25,7 @@ class Classifier(object):
         Cs = [0.001, 0.01, 0.1, 1, 10]
         gammas = [0.001, 0.01, 0.1, 1]
         self.coef = None
+        self.raw_tweets = []
         self.features_names = [
             "tweet_%s" % TWEET.CHARACTER_COUNT,
             "tweet_%s" % TWEET.WORD_COUNT,
@@ -228,7 +229,7 @@ class Classifier(object):
         self.coef = self.classifier.coef_  # here the weights of the features will be stored
 
 
-        self.get_feature_importance(self.classifier, feature_names=self.features_names, top_features=10)
+        # self.get_feature_importance(self.classifier, feature_names=self.features_names, top_features=10)
 
 
         return X
@@ -241,9 +242,26 @@ class Classifier(object):
         '''
         predictions = self.classifier.predict(target_data)
         self.classifier_predictions = predictions.tolist()
-        # class_probabilities = self.classifier.predict_proba(target_data)
+        class_probabilities = self.classifier.predict_proba(target_data)
         # print predictions
-        # print class_probabilities
+        print class_probabilities
+        print len(class_probabilities)
+
+
+        for pos, tweet in enumerate(self.raw_tweets):
+            prediction = predictions[pos]
+            confidence_score = class_probabilities[pos, prediction]
+            # confidence_score = class_probabilities[pos]
+            verdict = bool(prediction == 1)
+
+            clf.db_connection.find_and_update(collection=DB.RELEVANT_TWEET_COLLECTION, query={"_id": tweet[TWEET.ID]},
+                                              update={"$set": {TWEET.CONFIDENCE_SCORE: confidence_score,
+                                                               TWEET.PREDICTED_VERDICT: verdict}})
+            print pos
+            print tweet
+            print "----"
+
+
 
     def evaluate_classifier(self):
         target_names = ["false", "true"]
@@ -292,8 +310,6 @@ class Classifier(object):
         plt.show()
 
 
-
-
     def get_ground_truth_set(self):
         tweets = self.db_connection.find_document(collection=DB.RELEVANT_TWEET_COLLECTION,
                                                   filter={"$and":[{TWEET.AGGREGATE_LABEL:{"$exists": False}},
@@ -314,18 +330,28 @@ class Classifier(object):
 
             total_count += 1
 
+    def populate_authors(self):
+        valid_tweets = self.db_connection.find_document(collection=DB.RELEVANT_TWEET_COLLECTION,
+                                                        filter={TWEET.CONFIDENCE_SCORE: {"$exists": True}},
+                                                        projection={TWEET.AUTHOR_ID: 1, TWEET.CONFIDENCE_SCORE: 1})
+
+        for tweet in valid_tweets:
+            self.db_connection.find_and_update(collection=DB.MP_COLLECTION,
+                                               query={MP.ID: tweet[TWEET.AUTHOR_ID]},
+                                               update={"$inc": {MP.FACTUAL_SCORE: tweet[TWEET.CONFIDENCE_SCORE],
+                                                                MP.NO_FACT_CHECKED_TWEETS: 1}})
 
 if __name__ == "__main__":
     clf = Classifier()
     # clf.get_ground_truth_set()
-    tweets = clf.db_connection.find_document(collection=DB.RELEVANT_TWEET_COLLECTION,
-                                             filter={"$and":[{TWEET.SET_TO_FACTCHECK: True},
-                                                             {TWEET.TOPICS:{"$exists": True}},
-                                                             {TWEET.AGGREGATE_LABEL: {"$exists": True}},
-                                                             {TWEET.AGGREGATE_LABEL: {"$in": [1,0]}}]})
+    # tweets = clf.db_connection.find_document(collection=DB.RELEVANT_TWEET_COLLECTION,
+    #                                          filter={"$and":[{TWEET.SET_TO_FACTCHECK: True},
+    #                                                          {TWEET.TOPICS:{"$exists": True}},
+    #                                                          {TWEET.AGGREGATE_LABEL: {"$exists": True}},
+    #                                                          {TWEET.AGGREGATE_LABEL: {"$in": [1,0]}}]})
 
-    gold_standard = clf.db_connection.find_document(collection=DB.RELEVANT_TWEET_COLLECTION,
-                                                    filter={"golden":True})
+    # gold_standard = clf.db_connection.find_document(collection=DB.RELEVANT_TWEET_COLLECTION,
+    #                                                 filter={"golden":True})
     # gold_standard_true = clf.db_connection.find_document(collection=DB.RELEVANT_TWEET_COLLECTION,
     #                                                 filter={"$and":[{"golden":True}, {TWEET.AGGREGATE_LABEL: 1}]},
     #                                                      limit=30)
@@ -335,7 +361,7 @@ if __name__ == "__main__":
     #                                                          "$and": [{"golden": True}, {TWEET.AGGREGATE_LABEL: 0}]},
     #                                                      limit=30)
 
-    clf.gold_results = [x[TWEET.AGGREGATE_LABEL] for x in gold_standard]
+    # clf.gold_results = [x[TWEET.AGGREGATE_LABEL] for x in gold_standard]
     # clf.gold_results = [x[TWEET.AGGREGATE_LABEL] for x in gold_standard_true]
     # clf.gold_results = clf.gold_results + [x[TWEET.AGGREGATE_LABEL] for x in gold_standard_false]
     # not_crowdsourced = clf.db_connection.find_document(collection=DB.RELEVANT_TWEET_COLLECTION,
@@ -346,22 +372,26 @@ if __name__ == "__main__":
     # not_crowdsourced = clf.db_connection.find_document(collection=DB.RELEVANT_TWEET_COLLECTION,
                                                        # filter={"_id": 960409744962936832})
 
-    print len(clf.gold_results)
-    print tweets.count()
+    # print len(clf.gold_results)
+    # print tweets.count()
     # extra_tweet = not_crowdsourced.next()
     # print extra_tweet['text']
-    tweets = list(tweets)
-    gold_standard = list(gold_standard)
-    # gold_standard = list(gold_standard_true) + list(gold_standard_false)
-    data = tweets + gold_standard
-    # tweets.append(extra_tweet)
-    # labels = [tweet[TWEET.AGGREGATE_LABEL] for tweet in data[:-60]]
-    labels = [tweet[TWEET.AGGREGATE_LABEL] for tweet in data[:-150]]
-    print len(labels)
-    print len(tweets)
-    scaled_data = clf.train(train_data=data, train_target=labels)
-    # clf.predict(target_data=scaled_data[-60:])
-    clf.predict(target_data=scaled_data[-150:])
-    clf.evaluate_classifier()
+    # tweets = list(tweets)
+    # clf.raw_tweets = tweets
+    # gold_standard = list(gold_standard)
+    # # gold_standard = list(gold_standard_true) + list(gold_standard_false)
+    # data = tweets + gold_standard
+    # # tweets.append(extra_tweet)
+    # # labels = [tweet[TWEET.AGGREGATE_LABEL] for tweet in data[:-60]]
+    # labels = [tweet[TWEET.AGGREGATE_LABEL] for tweet in data[:-150]]
+    # # print len(labels)
+    # # print len(tweets)
+    # scaled_data = clf.train(train_data=data, train_target=labels)
+    #
+    # print len(scaled_data)
+    # # clf.predict(target_data=scaled_data[-60:])
+    # # clf.predict(target_data=scaled_data[-150:])
+    # clf.predict(target_data=scaled_data)
+    # clf.evaluate_classifier()
     # clf.start()
-
+    clf.populate_authors()
